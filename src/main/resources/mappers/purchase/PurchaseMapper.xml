@@ -57,10 +57,10 @@
     </insert>
 
     <insert id="insertPurchaseItem" parameterType="lappick.purchase.dto.PurchaseItemResponse">
-        INSERT INTO PURCHASE_LIST (PURCHASE_LIST_NUM, PURCHASE_NUM, GOODS_NUM, PURCHASE_QTY, PURCHASE_PRICE) 
+        INSERT INTO PURCHASE_LIST (PURCHASE_LIST_NUM, PURCHASE_NUM, GOODS_NUM, PURCHASE_QTY, PURCHASE_PRICE)
         VALUES (PURCHASE_LIST_SEQ.NEXTVAL, #{purchaseNum}, #{goodsNum}, #{purchaseQty}, #{purchasePrice})
     </insert>
-    
+
     <select id="selectMyPurchases" parameterType="map" resultMap="purchaseResultMap">
         SELECT
             P.PURCHASE_NUM, P.PURCHASE_DATE, P.PURCHASE_TOTAL, P.PURCHASE_STATUS,
@@ -83,7 +83,7 @@
                     WHERE P.MEMBER_NUM = #{memberNum}
                     <if test="searchWord != null and searchWord != ''">
                         AND UPPER(G.GOODS_NAME) LIKE '%' || UPPER(#{searchWord}) || '%'
-                        </if>
+                    </if>
                     GROUP BY P.PURCHASE_NUM, P.PURCHASE_DATE
                     ORDER BY P.PURCHASE_DATE DESC
                 )
@@ -91,7 +91,7 @@
         )
         ORDER BY P.PURCHASE_DATE DESC
     </select>
-    
+
     <select id="countMyPurchases" parameterType="map" resultType="int">
         SELECT COUNT(DISTINCT P.PURCHASE_NUM)
         FROM PURCHASE P
@@ -100,7 +100,7 @@
         WHERE P.MEMBER_NUM = #{memberNum}
         <if test="searchWord != null and searchWord != ''">
             AND UPPER(G.GOODS_NAME) LIKE '%' || UPPER(#{searchWord}) || '%'
-            </if>
+        </if>
     </select>
 
     <select id="selectAllPurchases" parameterType="map" resultMap="purchaseResultMap">
@@ -114,7 +114,7 @@
                     <if test="status != null and status != ''"> AND P.PURCHASE_STATUS = #{status} </if>
                     <if test="searchWord != null and searchWord != ''">
                         AND (UPPER(P.PURCHASE_NUM) LIKE '%' || UPPER(#{searchWord}) || '%' OR UPPER(M.MEMBER_ID) LIKE '%' || UPPER(#{searchWord}) || '%' OR UPPER(M.MEMBER_NAME) LIKE '%' || UPPER(#{searchWord}) || '%')
-                        </if>
+                    </if>
                 </where>
                 ORDER BY P.PURCHASE_DATE DESC
             ) T
@@ -127,7 +127,7 @@
             <if test="status != null and status != ''"> AND P.PURCHASE_STATUS = #{status} </if>
             <if test="searchWord != null and searchWord != ''">
                 AND (UPPER(P.PURCHASE_NUM) LIKE '%' || UPPER(#{searchWord}) || '%' OR UPPER(M.MEMBER_ID) LIKE '%' || UPPER(#{searchWord}) || '%' OR UPPER(M.MEMBER_NAME) LIKE '%' || UPPER(#{searchWord}) || '%')
-                </if>
+            </if>
         </where>
     </select>
 
@@ -147,24 +147,41 @@
         LEFT JOIN DELIVERY D ON P.PURCHASE_NUM = D.PURCHASE_NUM
         WHERE P.PURCHASE_NUM = #{purchaseNum}
     </select>
-    
+
+    <select id="selectPurchaseDetailByMember" resultMap="purchaseResultMap">
+        SELECT
+            P.PURCHASE_NUM, P.MEMBER_NUM, P.PURCHASE_DATE, P.PURCHASE_TOTAL, P.PURCHASE_STATUS,
+            P.RECEIVER_NAME, P.RECEIVER_PHONE, P.PURCHASE_ADDR, P.PURCHASE_MSG,
+            P.PAYMENT_METHOD, P.CARD_COMPANY, P.CARD_NUMBER, P.BANK_NAME, P.DEPOSITOR_NAME,
+            PL.PURCHASE_NUM AS PL_PURCHASE_NUM, PL.GOODS_NUM AS PL_GOODS_NUM, PL.PURCHASE_QTY, PL.PURCHASE_PRICE,
+            G.GOODS_NUM, G.GOODS_NAME, G.GOODS_MAIN_STORE_IMAGE, G.GOODS_CONTENTS,
+            D.DELIVERY_COMPANY, D.TRACKING_NUMBER,
+            M.MEMBER_ID, M.MEMBER_NAME
+        FROM PURCHASE P
+        LEFT JOIN PURCHASE_LIST PL ON P.PURCHASE_NUM = PL.PURCHASE_NUM
+        LEFT JOIN GOODS G ON PL.GOODS_NUM = G.GOODS_NUM
+        LEFT JOIN MEMBERS M ON P.MEMBER_NUM = M.MEMBER_NUM
+        LEFT JOIN DELIVERY D ON P.PURCHASE_NUM = D.PURCHASE_NUM
+        WHERE P.PURCHASE_NUM = #{purchaseNum}
+          AND P.MEMBER_NUM = #{memberNum}
+    </select>
+
     <select id="countDeliveredPurchaseItemByMember" resultType="int">
-    	SELECT COUNT(*)
-    	FROM PURCHASE P
-    	JOIN PURCHASE_LIST PL ON P.PURCHASE_NUM = PL.PURCHASE_NUM
-    	WHERE P.PURCHASE_NUM = #{purchaseNum}
-      		AND P.MEMBER_NUM = #{memberNum}
-      		AND P.PURCHASE_STATUS = '배송완료'
-      		AND PL.GOODS_NUM = #{goodsNum}
-	</select>
-    
-    
+        SELECT COUNT(*)
+        FROM PURCHASE P
+        JOIN PURCHASE_LIST PL ON P.PURCHASE_NUM = PL.PURCHASE_NUM
+        WHERE P.PURCHASE_NUM = #{purchaseNum}
+          AND P.MEMBER_NUM = #{memberNum}
+          AND P.PURCHASE_STATUS = '배송완료'
+          AND PL.GOODS_NUM = #{goodsNum}
+    </select>
+
     <update id="updatePurchaseStatus">
         UPDATE PURCHASE SET PURCHASE_STATUS = #{status} WHERE PURCHASE_NUM = #{purchaseNum}
     </update>
-    
+
     <insert id="insertDelivery" parameterType="lappick.purchase.dto.DeliveryRequest">
-        INSERT INTO DELIVERY (PURCHASE_NUM, DELIVERY_COMPANY, TRACKING_NUMBER, DELIVERY_START_DATE) 
+        INSERT INTO DELIVERY (PURCHASE_NUM, DELIVERY_COMPANY, TRACKING_NUMBER, DELIVERY_START_DATE)
         VALUES (#{purchaseNum}, #{deliveryCompany}, #{deliveryNum}, SYSTIMESTAMP)
     </insert>
 
