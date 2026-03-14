@@ -54,6 +54,7 @@
                     </div>
 
                     <form th:action="@{/purchases}" method="post">
+                        <input type="hidden" name="purchaseToken" th:value="${purchaseToken}">
                         <h3 class="section-title">주문 상품 정보</h3>
                         <table class="order-table">
                             <thead>
@@ -74,9 +75,6 @@
                                 <td th:text="${item.cart.cartQty}"></td>
                                 <td class="td-price" th:text="${#numbers.formatInteger(item.goods.goodsPrice * item.cart.cartQty, 0, 'COMMA')} + '원'"></td>
 
-                                <input type="hidden" th:name="|goodsNums[${stat.index}]|" th:value="${item.goods.goodsNum}">
-                                <input type="hidden" th:name="|goodsQtys[${stat.index}]|" th:value="${item.cart.cartQty}">
-                                <input type="hidden" th:name="|goodsPrices[${stat.index}]|" th:value="${item.goods.goodsPrice}">
                                 </tr>
                         </tbody>
                         </table>
@@ -178,7 +176,6 @@
                                 </div>
                                 <button type="submit" class="btn-purchase">결제하기</button>
                             </div>
-                            <input type="hidden" name="totalPayment" th:value="${totalPayment}">
                         </div>
                     </form>
                 </div>

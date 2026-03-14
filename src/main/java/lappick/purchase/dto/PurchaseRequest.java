@@ -4,6 +4,7 @@ import lombok.Data;
 
 @Data
 public class PurchaseRequest {
+    private String purchaseToken;
     private String receiverName;
     private String receiverPhone;
     private String purchasePost;
@@ -12,8 +13,6 @@ public class PurchaseRequest {
     private String purchaseMsg;
     private String[] goodsNums;
     private String[] goodsQtys;
-    private String[] goodsPrices;
-    private Integer totalPayment;
     private String paymentMethod;
     private String cardCompany;
     private String cardNumber;

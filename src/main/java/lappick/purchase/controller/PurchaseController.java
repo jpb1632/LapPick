@@ -2,6 +2,8 @@ package lappick.purchase.controller;
 
 import lombok.RequiredArgsConstructor;
 
+import jakarta.servlet.http.HttpSession;
+import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -21,9 +23,12 @@ import lappick.goods.mapper.GoodsMapper;
 import lappick.member.dto.MemberResponse;
 import lappick.member.mapper.MemberMapper;
 import lappick.purchase.dto.DeliveryRequest;
+import lappick.purchase.dto.PurchaseDraft;
+import lappick.purchase.dto.PurchaseDraftItem;
 import lappick.purchase.dto.PurchasePageResponse;
 import lappick.purchase.dto.PurchaseRequest;
 import lappick.purchase.dto.PurchaseResponse;
+import lappick.purchase.service.PurchaseDraftService;
 import lappick.purchase.service.PurchaseService;
 
 import java.util.Collections;
@@ -36,24 +41,27 @@ import java.util.Map;
 public class PurchaseController {
 
     private final PurchaseService purchaseService;
+    private final PurchaseDraftService purchaseDraftService;
     private final MemberMapper memberMapper;
     private final CartMapper cartMapper;
     private final GoodsMapper goodsMapper;
 
     @PostMapping("/purchases/order")
-    public String purchaseForm(@RequestParam("nums") String[] goodsNums, Authentication auth, Model model) {
+    public String purchaseForm(@RequestParam("nums") String[] goodsNums,
+                               Authentication auth,
+                               Model model,
+                               RedirectAttributes ra,
+                               HttpSession session) {
         UserDetails userDetails = (UserDetails) auth.getPrincipal();
         MemberResponse memberDTO = memberMapper.selectOneById(userDetails.getUsername());
 
         List<CartItemResponse> items = cartMapper.cartSelectList(memberDTO.getMemberNum(), goodsNums, null);
+        if (items == null || items.isEmpty()) {
+            ra.addFlashAttribute("error", "주문할 상품 정보를 다시 확인해주세요.");
+            return "redirect:/cart/cartList";
+        }
 
-        model.addAttribute("member", memberDTO);
-        model.addAttribute("items", items);
-        model.addAttribute("totalItemCount", items.size());
-
-        model.addAttribute("totalQuantity", items.stream().mapToInt(item -> item.getCart().getCartQty()).sum());
-        model.addAttribute("totalPayment", items.stream().mapToInt(item -> item.getGoods().getGoodsPrice() * item.getCart().getCartQty()).sum());
-
+        prepareOrderForm(model, session, memberDTO, items);
         return "user/purchase/order-form";
     }
 
@@ -61,33 +69,47 @@ public class PurchaseController {
     public String purchaseFormDirect(@RequestParam("goodsNum") String goodsNum,
                                      @RequestParam(value = "qty", defaultValue = "1") int qty,
                                      Authentication auth,
-                                     Model model) {
+                                     Model model,
+                                     RedirectAttributes ra,
+                                     HttpSession session) {
         UserDetails userDetails = (UserDetails) auth.getPrincipal();
         MemberResponse memberDTO = memberMapper.selectOneById(userDetails.getUsername());
         GoodsResponse goodsDTO = goodsMapper.selectOne(goodsNum);
+        if (goodsDTO == null) {
+            ra.addFlashAttribute("error", "주문할 상품 정보를 다시 확인해주세요.");
+            return "redirect:/goods/detail/" + goodsNum;
+        }
+        int safeQty = Math.max(qty, 1);
 
         Cart cart = new Cart();
-        cart.setCartQty(qty);
+        cart.setCartQty(safeQty);
 
         CartItemResponse item = new CartItemResponse();
         item.setGoods(goodsDTO);
         item.setCart(cart);
 
-        model.addAttribute("member", memberDTO);
-        model.addAttribute("items", Collections.singletonList(item));
-        model.addAttribute("totalItemCount", 1);
-        model.addAttribute("totalQuantity", qty);
-        model.addAttribute("totalPayment", goodsDTO.getGoodsPrice() * qty);
+        prepareOrderForm(model, session, memberDTO, Collections.singletonList(item));
         return "user/purchase/order-form";
     }
 
     @PostMapping("/purchases")
-    public String placeOrder(PurchaseRequest command, Authentication auth, RedirectAttributes ra) {
+    public String placeOrder(PurchaseRequest command,
+                             Authentication auth,
+                             RedirectAttributes ra,
+                             HttpSession session) {
         UserDetails userDetails = (UserDetails) auth.getPrincipal();
         MemberResponse memberDTO = memberMapper.selectOneById(userDetails.getUsername());
         try {
+            PurchaseDraft draft = purchaseDraftService.consumeDraft(command.getPurchaseToken(), session);
+            applyDraftToCommand(command, draft);
             String purchaseNum = purchaseService.placeOrder(command, memberDTO.getMemberNum());
             return "redirect:/purchases/complete?purchaseNum=" + purchaseNum;
+        } catch (CannotAcquireLockException e) {
+            ra.addFlashAttribute("error", e.getMessage());
+            return "redirect:/cart/cartList";
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("error", e.getMessage());
+            return "redirect:/cart/cartList";
         } catch (IllegalStateException e) {
             ra.addFlashAttribute("error", e.getMessage());
             return "redirect:/cart/cartList";
@@ -127,8 +149,19 @@ public class PurchaseController {
     }
 
     @GetMapping("/purchases/{purchaseNum}")
-    public String orderDetail(@PathVariable("purchaseNum") String purchaseNum, Model model) {
-        PurchaseResponse order = purchaseService.getOrderDetail(purchaseNum);
+    public String orderDetail(@PathVariable("purchaseNum") String purchaseNum,
+                              Authentication auth,
+                              Model model,
+                              RedirectAttributes ra) {
+        UserDetails userDetails = (UserDetails) auth.getPrincipal();
+        MemberResponse memberDTO = memberMapper.selectOneById(userDetails.getUsername());
+        PurchaseResponse order;
+        try {
+            order = purchaseService.getOrderDetailForMember(purchaseNum, memberDTO.getMemberNum());
+        } catch (SecurityException e) {
+            ra.addFlashAttribute("error", "조회 권한이 없는 주문입니다.");
+            return "redirect:/purchases/my-orders";
+        }
         model.addAttribute("order", order);
         return "user/purchase/order-detail";
     }
@@ -168,8 +201,12 @@ public class PurchaseController {
     @PostMapping("/admin/purchases/process-shipping")
     @PreAuthorize("hasAuthority('ROLE_EMPLOYEE')")
     public String processShipping(DeliveryRequest dto, RedirectAttributes ra) {
-        purchaseService.processShipping(dto);
-        ra.addFlashAttribute("message", "송장 정보가 등록되었으며, 주문 상태가 '배송중'으로 변경되었습니다.");
+        try {
+            purchaseService.processShipping(dto);
+            ra.addFlashAttribute("message", "송장 정보가 등록되었고 주문 상태가 '배송중'으로 변경되었습니다.");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            ra.addFlashAttribute("error", e.getMessage());
+        }
         return "redirect:/admin/purchases";
     }
 
@@ -178,8 +215,43 @@ public class PurchaseController {
     public String updateStatus(@RequestParam("purchaseNum") String purchaseNum,
                                @RequestParam("status") String status,
                                RedirectAttributes ra) {
-        purchaseService.updateOrderStatus(purchaseNum, status);
-        ra.addFlashAttribute("message", "주문 상태가 '" + status + "'(으)로 성공적으로 변경되었습니다.");
+        try {
+            purchaseService.updateOrderStatus(purchaseNum, status);
+            ra.addFlashAttribute("message", "주문 상태가 '" + status + "'(으)로 변경되었습니다.");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            ra.addFlashAttribute("error", e.getMessage());
+        }
         return "redirect:/admin/purchases";
+    }
+
+    private void prepareOrderForm(Model model,
+                                  HttpSession session,
+                                  MemberResponse memberDTO,
+                                  List<CartItemResponse> items) {
+        String purchaseToken = purchaseDraftService.storeDraft(items, session);
+
+        model.addAttribute("member", memberDTO);
+        model.addAttribute("items", items);
+        model.addAttribute("purchaseToken", purchaseToken);
+        model.addAttribute("totalItemCount", items.size());
+        model.addAttribute("totalQuantity", items.stream().mapToInt(item -> item.getCart().getCartQty()).sum());
+        model.addAttribute("totalPayment", items.stream()
+                .mapToInt(item -> item.getGoods().getGoodsPrice() * item.getCart().getCartQty())
+                .sum());
+    }
+
+    private void applyDraftToCommand(PurchaseRequest command, PurchaseDraft draft) {
+        List<PurchaseDraftItem> draftItems = draft.items();
+        String[] goodsNums = new String[draftItems.size()];
+        String[] goodsQtys = new String[draftItems.size()];
+
+        for (int i = 0; i < draftItems.size(); i++) {
+            PurchaseDraftItem item = draftItems.get(i);
+            goodsNums[i] = item.goodsNum();
+            goodsQtys[i] = String.valueOf(item.quantity());
+        }
+
+        command.setGoodsNums(goodsNums);
+        command.setGoodsQtys(goodsQtys);
     }
 }
