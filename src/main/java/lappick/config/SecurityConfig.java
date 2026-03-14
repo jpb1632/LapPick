@@ -55,8 +55,7 @@ public class SecurityConfig {
                     "/auth/userIdCheck",
                     "/goods/goodsFullList",
                     "/goods/detail/**",
-                    "/banner/**",
-                    "/test/**"
+                    "/banner/**"
                 ).permitAll()
 
                 .requestMatchers(
