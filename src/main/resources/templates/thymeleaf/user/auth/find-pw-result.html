@@ -8,24 +8,33 @@
     <main class="th-layout-main">
         <div class="personal-jPM46ggXUc" data-bid="YvM46gI0mn">
             <div class="contents-inner">
-                <div class="contents-container container-md" style="text-align:center;">
+                <div class="contents-container container-md" style="text-align: center;">
                     <div class="contents-top">
                         <div class="textset" style="margin-bottom: 30px;">
                             <h2 class="textset-tit" style="font-size: 50px;">비밀번호 찾기 결과</h2>
                         </div>
-                        <div th:if="${success}" class="alert alert-success" style="font-size:1.7rem; padding: 20px; line-height: 1.6;">
-                            임시 비밀번호가 생성되었습니다.
+
+                        <div th:if="${success}" class="alert alert-success" style="font-size: 1.7rem; padding: 20px; line-height: 1.8;">
+                            등록된 이메일로 임시 비밀번호를 발송했습니다.
+                            <br>
+                            메일을 확인하신 뒤 로그인 후 비밀번호를 변경해주세요.
                         </div>
 
-                        <div th:if="${tempPassword != null}" class="alert alert-info" style="margin-top: 15px; font-size: 1.8rem;">
-                            <strong>[테스트용 임시 비밀번호]</strong>
-                            <br>
-                            <strong style="color: #0d6efd; font-size: 1.9rem; letter-spacing: 2px;" th:text="${tempPassword}"></strong>
+                        <div th:if="${!success}" class="alert alert-danger" style="font-size: 1.7rem; padding: 20px; line-height: 1.8;">
+                            <span th:text="${errorMessage}">입력하신 정보와 일치하는 회원 정보가 없습니다.</span>
                         </div>
-                        <div th:unless="${success}" class="alert alert-danger" style="font-size:1.7rem; padding: 20px;">
-                            입력하신 정보와 일치하는 회원을 찾을 수 없습니다.
+
+                        <div class="btn-group" style="display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 24px; flex-wrap: wrap;">
+                            <a th:if="${success and mailPreviewEnabled}"
+                               th:href="${mailPreviewUrl}"
+                               target="_blank"
+                               rel="noopener noreferrer"
+                               class="btnset"
+                               style="display: inline-flex; align-items: center; justify-content: center; width: auto; min-width: 220px; margin: 0; padding: 10px 30px;">메일 확인하러 가기</a>
+                            <a th:href="@{/auth/login}"
+                               class="btnset btnset-line"
+                               style="display: inline-flex; align-items: center; justify-content: center; width: auto; min-width: 220px; margin: 0; padding: 10px 30px;">로그인 페이지로 이동</a>
                         </div>
-                        <a th:href="@{/login}" class="btnset btnset-line" style="margin-top: 40px; padding: 10px 30px;">로그인 페이지로 이동</a>
                     </div>
                 </div>
             </div>

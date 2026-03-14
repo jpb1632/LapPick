@@ -90,7 +90,7 @@
             $('#header-cart-icon').on('click', function() {
                 if (/*[[${#authorization.expression('isAnonymous()')}]]*/) {
                     if (confirm('장바구니를 이용하시려면 로그인 하셔야 합니다.\n로그인 페이지로 이동하시겠습니까?')) {
-                        window.location.href = '/login/item.login';
+                        window.location.href = /*[[@{/auth/login}]]*/ '/auth/login';
                     }
                 } else if (/*[[${#authorization.expression('hasRole(''ROLE_EMPLOYEE'')')}]]*/) {
                     alert('직원은 장바구니 이용이 불가합니다.');

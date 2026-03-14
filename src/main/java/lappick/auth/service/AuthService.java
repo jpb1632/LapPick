@@ -17,11 +17,11 @@ import lombok.RequiredArgsConstructor;
 public class AuthService {
     
     private final AuthMapper authMapper;
+    private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     
-    // MemberJoinService의 로직을 가져옴
     public void joinMember(RegisterRequest registerRequest) {
-    	MemberResponse dto = new MemberResponse();
+        MemberResponse dto = new MemberResponse();
         dto.setGender(registerRequest.getGender());
         dto.setMemberAddr(registerRequest.getMemberAddr());
         dto.setMemberAddrDetail(registerRequest.getMemberAddrDetail());
@@ -32,40 +32,36 @@ public class AuthService {
         dto.setMemberPhone1(registerRequest.getMemberPhone1());
         dto.setMemberPhone2(registerRequest.getMemberPhone2());
         dto.setMemberPost(registerRequest.getMemberPost());
-
         dto.setMemberPw(passwordEncoder.encode(registerRequest.getMemberPw()));
-        
+
         authMapper.userInsert(dto);
     }
     
-    // 아이디 찾기 기능 (기존 MemberService에서 이동)
     @Transactional(readOnly = true)
     public String findIdByNameAndEmail(String memberName, String memberEmail) {
         return authMapper.findIdByNameAndEmail(memberName, memberEmail);
     }
 
-    // 비밀번호 재설정 기능 (기존 MemberService에서 이동)
-    public String resetPassword(String memberId, String memberEmail) {
+    public boolean resetPassword(String memberId, String memberEmail) {
         MemberResponse member = authMapper.findByIdAndEmail(memberId, memberEmail);
         if (member == null) {
-            return null;
+            return false;
         }
 
         String tempPassword = UUID.randomUUID().toString().substring(0, 8);
         member.setMemberPw(passwordEncoder.encode(tempPassword));
         authMapper.memberPwUpdate(member);
 
-        /* // 실제 운영 시 주석 해제
         String subject = "[LapPick] 임시 비밀번호 안내";
-        String text = "회원님의 임시 비밀번호는 " + tempPassword + " 입니다. 로그인 후 반드시 비밀번호를 변경해주세요.";
+        String text = "회원님의 임시 비밀번호는 " + tempPassword + " 입니다."
+                + System.lineSeparator()
+                + "로그인 후 반드시 비밀번호를 변경해주세요.";
         emailService.sendSimpleMessage(member.getMemberEmail(), subject, text);
-        */
-        return tempPassword;
+        return true;
     }
 
-    // 비밀번호 변경 (기존 MemberService에서 이동)
     public void changePassword(String memberId, String oldPw, String newPw) {
-        String encodedPassword = authMapper.selectPwById(memberId); 
+        String encodedPassword = authMapper.selectPwById(memberId);
         if (encodedPassword == null || !passwordEncoder.matches(oldPw, encodedPassword)) {
             throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
         }
@@ -74,6 +70,6 @@ public class AuthService {
         dto.setMemberId(memberId);
         dto.setMemberPw(passwordEncoder.encode(newPw));
         
-        authMapper.memberPwUpdate(dto); 
+        authMapper.memberPwUpdate(dto);
     }
 }

@@ -10,21 +10,22 @@
             <div class="contents-inner">
                 <div class="contents-container container-md">
                     <div class="contents-top">
-                         <div class="textset" style="margin-bottom: 30px;">
+                        <div class="textset" style="margin-bottom: 30px;">
                             <h2 class="textset-tit" style="font-size: 50px;">비밀번호 찾기</h2>
                             <p class="textset-desc" style="text-align: center; margin-top: 10px;">
-                                아이디와 이메일 주소를 입력하시면, 가입된 이메일로<br>임시 비밀번호를 발송해 드립니다.
+                                아이디와 이메일 주소를 입력하시면 가입한 이메일로<br>
+                                임시 비밀번호를 발송해드립니다.
                             </p>
                         </div>
-                    <form th:action="@{/auth/find-pw}" method="post">
-                      <div class="inputset">
+                        <form th:action="@{/auth/find-pw}" method="post">
+                            <div class="inputset">
                                 <input type="text" id="memberId" name="memberId" class="inputset-input form-control" placeholder="아이디를 입력해주세요." required>
                             </div>
                             <div class="inputset">
                                 <input type="email" id="memberEmail" name="memberEmail" class="inputset-input form-control" placeholder="이메일을 입력해주세요." required>
                             </div>
                             <div class="btn-group" style="display: flex; gap: 10px; margin-top: 10px;">
-                                <a th:href="@{/auth/login}" class="btnset btnset-line" style="flex: 1; text-align: center;">로그인으로</a>
+                                <a th:href="@{/auth/login}" class="btnset btnset-line" style="flex: 1; text-align: center;">로그인으로 이동</a>
                                 <button type="submit" class="btnset" style="flex: 1;">임시 비밀번호 발송</button>
                             </div>
                         </form>

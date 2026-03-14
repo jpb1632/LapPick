@@ -22,7 +22,7 @@ public class CartController {
             @RequestParam(value = "searchWord", required = false) String searchWord,
             Principal principal, Model model) {
         
-        if (principal == null) return "redirect:/login/item.login";
+        if (principal == null) return "redirect:/auth/login";
         
         Map<String, Object> cartMap = cartService.getCartList(principal.getName(), searchWord);
         

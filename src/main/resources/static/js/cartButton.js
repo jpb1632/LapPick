@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", function () {
             window.location.href = "/cart/cartList"; // 장바구니 페이지로 이동
           } else {
             alert("로그인이 필요합니다. 로그인 페이지로 이동합니다.");
-            window.location.href = "/login/item.login"; // 로그인 페이지로 이동
+            window.location.href = "/auth/login"; // 로그인 페이지로 이동
           }
         })
         .catch(() => {

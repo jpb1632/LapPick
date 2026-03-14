@@ -1,14 +1,15 @@
 spring.application.name=lappick
+spring.config.import=optional:file:./config/application-secrets.properties
 
 file.upload.dir=/path/to/upload/directory
 
-#Thymeleaf
+# Thymeleaf
 spring.thymeleaf.cache=false
 spring.thymeleaf.prefix=classpath:/templates/thymeleaf/
 spring.thymeleaf.suffix=.html
 
-#DB
-#log4j (log4jdbc)
+# DB
+# log4jdbc
 spring.datasource.url=jdbc:log4jdbc:oracle:thin:@//localhost:1521/XEPDB1
 spring.datasource.driver-class-name=net.sf.log4jdbc.sql.jdbcapi.DriverSpy
 spring.datasource.username=YOUR_DB_USERNAME
@@ -18,18 +19,23 @@ spring.datasource.password=YOUR_DB_PASSWORD
 mybatis.type-aliases-package=lappick.domain
 mybatis.configuration.map-underscore-to-camel-case=true
 mybatis.mapper-locations=classpath*:/mappers/**/*.xml
-# null 파라미터의 JDBC 타입 기본값을 VARCHAR로 (오라클 setNull 에러 방지)
 mybatis.configuration.jdbc-type-for-null=VARCHAR
 
-#구글smtp설정
-spring.mail.host=smtp.gmail.com
-spring.mail.port=587
-spring.mail.username=YOUR_GMAIL_USERNAME
-spring.mail.password=YOUR_GMAIL_APP_PASSWORD
-spring.mail.properties.mail.smtp.auth=true
-spring.mail.properties.mail.smtp.starttls.enable=true
+# Local mail sandbox (Mailpit)
+spring.mail.host=127.0.0.1
+spring.mail.port=1025
+spring.mail.username=
+spring.mail.password=
+spring.mail.properties.mail.smtp.auth=false
+spring.mail.properties.mail.smtp.starttls.enable=false
+spring.mail.properties.mail.smtp.connectiontimeout=3000
+spring.mail.properties.mail.smtp.timeout=3000
+spring.mail.properties.mail.smtp.writetimeout=3000
+app.mail.from=no-reply@lappick.local
+app.mail.preview-enabled=true
+app.mail.preview-url=http://127.0.0.1:8025
 
-#file 설정
+# File upload
 spring.servlet.multipart.max-file-size=100MB
 spring.servlet.multipart.max-request-size=100MB
 spring.thymeleaf.encoding=UTF-8
@@ -41,11 +47,11 @@ logging.level.lappick=DEBUG
 logging.level.org.springframework.web.servlet.resource=INFO
 logging.level.org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping=TRACE
 
-# 트랜잭션 설정
+# Transaction
 spring.transaction.default-timeout=10
 spring.transaction.rollback-on-commit-failure=true
 
-# HikariCP 커넥션 풀 최적화
+# HikariCP
 spring.datasource.hikari.maximum-pool-size=70
 spring.datasource.hikari.minimum-idle=10
 spring.datasource.hikari.connection-timeout=5000

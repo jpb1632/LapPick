@@ -54,6 +54,8 @@ Thumbs.db
 # === Local-only config (비밀/PC전용) ===
 /src/main/resources/application-local*.yml
 /src/main/resources/application-*.properties
+/config/application-secrets.properties
+/tools/mailpit/runtime/
 
 # === 실제 업로드 파일(로컬만 보관) ===
 /upload/
