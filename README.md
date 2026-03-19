@@ -15,7 +15,7 @@ CPU 종류, RAM 용량, SSD 용량, GPU 모델, 화면 해상도, 주사율...
 선택지가 수십 개나 되니까 초보 사용자는 선택하기도 전에 지쳐버립니다.
 
 스펙도 중요하지만, 너무 많은 선택지는 오히려 선택을 어렵게 만든다고 판단해  
-필터를 5가지로 줄이고 입력도 간편하게 만들어
+필터를 5가지로 줄이고 입력도 간편하게 만들어  
 누구나 쉽게 노트북을 찾을 수 있는 쇼핑몰을 만들고 싶었습니다.
 
 ---
@@ -46,10 +46,6 @@ CPU 종류, RAM 용량, SSD 용량, GPU 모델, 화면 해상도, 주사율...
    kg 단위 (예: 1.0 ~ 1.7)  
    편의 기능: 125 입력 → 1.25 자동 변환
 
-**자동 변환 기능:**
-
-"156" → 15.6, "125" → 1.25 자동 변환으로 입력 편의성 개선
-
 **동적 쿼리:**
 
 MyBatis 동적 쿼리로 사용자가 선택한 필터만 WHERE 조건에 추가.  
@@ -62,7 +58,7 @@ MyBatis 동적 쿼리로 사용자가 선택한 필터만 WHERE 조건에 추가
 회계의 수불부 방식을 적용하여 모든 재고 변동을 INSERT로만 기록:
 - 입고 +100, 주문 -1, 취소 +1 형태로 이력 누적
 - SUM(IPGO_QTY)로 현재 재고 계산
-- 복합 인덱스 (GOODS_NUM, IPGO_QTY)로 성능 보장 (Cost 66.1% 개선)
+- 복합 인덱스 (GOODS_NUM, IPGO_QTY)로 재고 집계 조회 최적화 (테스트 기준 Cost 98.7% 감소)
 
 장점:
 - 재고 변동 이력 완전 추적
@@ -135,8 +131,6 @@ FOR UPDATE 비관적 락으로 동시성 제어:
 
 ---
 
-
-
 ## 기술 스택
 
 Backend
@@ -151,9 +145,9 @@ Frontend
 - 다음 주소 API
 
 Testing
-- JMeter 5.6.3
-- Eclipse Debugger
-- EXPLAIN PLAN
+- JUnit 5 + Mockito, Spring Security Test + MockMvc (테스트 코드 64개, 11개 파일)
+- JMeter 5.6.3 (100명 동시성 부하 테스트)
+- EXPLAIN PLAN (커버링 인덱스 성능 검증)
 
 ---
 
@@ -166,13 +160,14 @@ LapPick/
 │   ├── goods/
 │   │   └── GoodsService.java        # 수불부 재고 관리
 │   ├── auth/
-│   │   └── AuthService.java         # UNION ALL 통합 인증
+│   │   └── AuthMapper.xml           # UNION ALL 기반 통합 인증 조회
 │   ├── config/
 │   │   ├── SecurityConfig.java      # Spring Security 설정
 │   │   └── WebConfig.java
 │   ├── cart/, review/, member/, admin/
 │   ├── qna/                         # 1:1 문의
 │   └── common/
+│       └── util/SensitiveDataMasker.java  # 주민번호/카드번호 마스킹
 ├── src/main/resources/
 │   ├── mappers/
 │   │   ├── GoodsMapper.xml          # FOR UPDATE, 동적 필터
@@ -181,8 +176,12 @@ LapPick/
 │   │   └── PurchaseMapper.xml
 │   ├── static/
 │   └── templates/
+├── src/test/java/lappick/ 			 # 테스트 코드 64개 (11개 파일)
+├── config/
+│   └── application-secrets.example.properties
+├── tools/mailpit/                   # 로컬 메일 샌드박스
 ├── docs/
-│   ├── images/                      # README 이미지
+│   ├── images/
 │   ├── 비관적_락_동시성_테스트.pdf
 │   ├── 복합_인덱스_성능_테스트.pdf
 │   └── Eclipse_Blocking_검증.pdf
@@ -205,19 +204,27 @@ CREATE USER LAPPICK IDENTIFIED BY yourpassword;
 GRANT CONNECT, RESOURCE TO LAPPICK;
 ```
 
-2. application.properties
+2. 로컬 설정 파일 생성  
+`config/application-secrets.example.properties`를 복사해서  
+`config/application-secrets.properties`로 저장하고 값 채우기:
 ```properties
-spring.datasource.url=jdbc:oracle:thin:@localhost:1521/XEPDB1
-spring.datasource.username=LAPPICK
+file.upload.dir=C:/your/upload/path/
 spring.datasource.password=yourpassword
 ```
 
-3. 실행
+3. (선택) 로컬 메일 샌드박스 실행  
+임시 비밀번호 발송 기능을 로컬에서 확인하려면:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\mailpit\start-mailpit.ps1
+```
+수신함: http://127.0.0.1:8025
+
+4. 실행
 ```bash
 mvn spring-boot:run
 ```
 
-4. 접속
+5. 접속
 ```
 http://localhost:8080
 ```
@@ -244,7 +251,7 @@ http://localhost:8080
 
 상세 테스트: [비관적_락_동시성_테스트.pdf](docs/비관적_락_동시성_테스트.pdf)
 
-성능은 약 4.3배 느려졌지만, 쇼핑몰에서 오버셀링과 같은 금전적인 오류는 
+성능은 약 4.3배 느려졌지만, 쇼핑몰에서 오버셀링과 같은 금전적인 오류는  
 치명적이므로 허용 가능한 범위 내에서 정합성을 택했습니다.
 
 ---
@@ -253,19 +260,93 @@ http://localhost:8080
 
 프로젝트를 완성하고 코드를 다시 보니까 개선할 부분이 많이 보였습니다.
 
-### 주요 개선 사항
+### 1. 동시성 제어 강화
 
-#### 1. 동시성 제어 강화
 - `@Transactional` 명시적 설정 (timeout=10, isolation=READ_COMMITTED)
 - FOR UPDATE 도입
 - 예외 처리 세분화 (CannotAcquireLockException / IllegalStateException)
 
-#### 2. 로깅 시스템 개선
+### 2. 로깅 시스템 개선
+
 - System.out.println → Logger 전환
 - 로그 레벨 구분 (INFO/ERROR)
 
 초기에는 System.out으로 출력했는데,  
 나중에 찾아보니 로그 레벨 제어가 안 되고 성능에도 영향을 준다는 걸 알게 됐습니다.
+
+### 3. 보안
+
+기능을 완성하고 나서 보안 쪽을 다시 봤더니 기본적인 부분이 빠져있었습니다.
+
+가장 눈에 띄었던 건 CSRF였습니다. 처음엔 `csrf.disable()`로 그냥 꺼뒀는데,  
+이 상태에서 사용자가 다른 사이트에서 폼을 제출하면 막을 방법이 없었습니다.  
+`CookieCsrfTokenRepository`를 적용하고, jQuery 전역 인터셉터로 AJAX 요청마다  
+자동으로 토큰을 붙이도록 했습니다.
+
+삭제 요청도 GET으로 처리하던 걸 POST로 바꿨습니다.  
+GET 요청은 CSRF 보호 대상이 아니라서 링크만 클릭해도 삭제가 됐습니다.
+
+`returnUrl` 파라미터도 그냥 redirect에 붙여쓰던 걸 외부 URL은 차단하도록 수정했습니다.  
+`https://evil.example` 같은 값이 들어와도 `/admin/qna`로 돌아가게 했습니다.
+
+### 4. 개인정보 처리
+
+직원 주민번호가 원문 그대로 DB에 저장되고 있었습니다.
+
+`SensitiveDataMasker` 유틸리티 클래스를 만들어서  
+저장할 때 `900101-1234567` → `900101-1******` 형태로 마스킹하고,  
+편집 폼에도 원문 대신 마스킹된 값을 표시하도록 했습니다.  
+수정할 때 주민번호 칸을 비워두면 기존 값을 그대로 유지합니다.
+
+카드번호도 같은 방식으로 처리했습니다. 주문 저장 시 마스킹하고,  
+주문 상세 조회 때도 마스킹된 값을 보여줍니다.
+
+다만 마스킹 저장은 원본 복원이 안 된다는 한계가 있어서,  
+운영 환경이라면 AES 암호화 저장이 더 맞는 방향일 것 같습니다.
+
+### 5. DB 무결성
+
+기능 구현에 집중하다 보니 DB 레벨 제약이 많이 빠져있었습니다.
+
+아이디와 이메일 중복을 서비스 코드에서만 체크하고 있었는데,  
+동시 요청이 오면 둘 다 통과할 수 있는 구조였습니다.  
+MEMBERS, EMPLOYEES 테이블에 Unique 제약을 추가해서 DB 레벨에서도 막았습니다.
+
+FK도 빠진 게 많았습니다. CART → GOODS, GOODS → EMPLOYEES 등 5개를 추가했고,  
+QNA → MEMBERS FK에도 ON DELETE CASCADE가 없어서 추가했습니다.  
+이게 없으면 회원 삭제 시 FK 위반 에러가 나거나, 서비스 코드에서 순서를 맞춰야 합니다.
+
+`cart_qty > 0`, `review_rating BETWEEN 1 AND 5` 같은 비즈니스 규칙도  
+CHECK 제약으로 DB에 추가했습니다. 서비스 코드가 우회돼도 잘못된 값이 들어가지 않습니다.
+
+### 6. 회원 탈퇴 처리
+
+탈퇴가 물리 DELETE였습니다.  
+탈퇴한 회원의 주문 이력이 남아있는데 회원 정보가 사라지면 데이터가 깨집니다.
+
+MEMBERS 테이블에 `MEMBER_STATUS`, `MEMBER_WITHDRAWN_AT` 컬럼을 추가하고,  
+탈퇴 시에는 삭제 대신 상태를 WITHDRAWN으로 바꾸도록 수정했습니다.  
+MEMBER_ID도 `withdrawn_{memberNum}` 형식으로 변경해서 재가입 시 중복을 피했습니다.
+
+### 7. 채번 방식
+
+직원 번호, 상품 번호, 회원 번호를 `MAX(col)+1`로 채번하고 있었는데,  
+동시 요청이 오면 같은 번호가 두 번 나올 수 있는 구조였습니다.
+
+핵심 채번 경로를 Oracle Sequence 기반으로 전환했습니다.  
+(`EMP_NUM_SEQ`, `GOODS_NUM_SEQ`, `MEMBER_NUM_SEQ`)
+
+### 8. 테스트 코드
+
+기능 구현이 끝나고 나서 리팩토링을 진행했는데,  
+"이 코드를 바꿔도 다른 곳이 안 깨지는지"를 확인할 방법이 없었습니다.
+
+JUnit 5 + Mockito 기반 단위 테스트와 Spring Security Test + MockMvc 기반 보안 테스트를 작성했습니다. (11개 파일, 64개 케이스)
+주요 케이스는 비관적 락 타임아웃 처리, 재고 부족 차단, 중복 체크,  
+소프트 딜리트 흐름, Open Redirect 차단 등입니다.
+
+MockMvc + SecurityConfig를 임포트해서 실제 CSRF 필터가 동작하는 환경에서  
+Security 관련 동작도 테스트했습니다.
 
 ---
 
@@ -420,23 +501,34 @@ GOODS_IPGO (
 대신 매번 SUM을 계산해야 해서 느릴 수 있는데,  
 복합 인덱스 (GOODS_NUM, IPGO_QTY)로 해결했습니다.
 
-성능 테스트를 위해 10만 건 더미 데이터를 넣고 EXPLAIN PLAN으로 확인해보니  
-Cost가 310 → 105로 떨어졌습니다.
+성능 테스트를 위해 GOODS_IPGO와 동일 구조의 TEST_GOODS_IPGO에  
+100만 건 더미 데이터(상품 200개 × 5,000건 수불부 이력)를 넣고,  
+100회 반복 실행 총합과 EXPLAIN PLAN을 함께 확인했습니다.
+
+그 결과 Cost는 1,654 → 22로 감소했고,  
+100회 실행 총합은 16,700ms → 30ms였습니다.  
+회당 평균으로 환산하면 167ms → 0.3ms입니다.
 
 실행 계획 (인덱스 없음):
 ```
-Cost: 310
+Cost: 1,654
 Operation: TABLE ACCESS FULL
-Rows: 100,057
+Predicate: filter("GOODS_NUM"='goods_000001')
 ```
 
 실행 계획 (인덱스 있음):
 ```
-Cost: 105 (66.1% 개선)
-Operation: INDEX FAST FULL SCAN
+Cost: 22
+Operation: INDEX RANGE SCAN
+Predicate: access("GOODS_NUM"='goods_000001')
 ```
 
-실제 데이터는 85건 정도지만, 나중에 데이터가 많이 쌓였을 때를 대비해서  
+테이블 접근이 사라졌고, Predicate도 filter() → access()로 바뀌어  
+조건 컬럼을 인덱스 탐색에 직접 활용하는 형태로 개선됐습니다.  
+또한 SUM 대상 컬럼(IPGO_QTY)까지 인덱스에 포함되어  
+인덱스만으로 집계가 가능함을 확인했습니다.
+
+실제 데이터는 85건 정도지만, 데이터가 많이 쌓였을 때를 대비해서  
 복합 인덱스를 미리 만들어뒀습니다.
 
 상세 분석: [복합_인덱스_성능_테스트.pdf](docs/복합_인덱스_성능_테스트.pdf)
@@ -544,7 +636,6 @@ WHERE EMP_ID = #{userId}
 이렇게 하니 Spring Security 설정을 하나만 만들면 됐고,  
 인증 로직 수정도 한 곳에서만 하면 됐습니다.
 
-
 ---
 
 ### LEFT JOIN으로 N+1 해결
@@ -589,7 +680,7 @@ LEFT JOIN (SELECT GOODS_NUM, SUM(PURCHASE_QTY) AS TOTAL_SOLD
 
 예상보다는 느렸지만 허용 가능한 범위였습니다.
 
-그리고 JMeter로 부하 테스트를 돌려보고,  
+JMeter로 부하 테스트를 돌려보고,  
 EXPLAIN PLAN으로 쿼리 성능을 확인하고,  
 Eclipse Debugger로 Lock 동작을 눈으로 검증했습니다.
 
@@ -610,85 +701,76 @@ SELECT SUM(IPGO_QTY) FROM GOODS_IPGO WHERE GOODS_NUM = ?
 이 쿼리는 인덱스만으로 처리가 가능해서 테이블 접근이 필요 없습니다.  
 (GOODS_NUM으로 찾고, IPGO_QTY는 이미 인덱스에 포함되어 있기 때문)
 
-EXPLAIN PLAN으로 확인해보니 Cost가 310 → 105로 떨어졌습니다.
+EXPLAIN PLAN 기준 Cost가 1,654 → 22로 감소했고, 100회 실행 총합은 16,700ms → 30ms였습니다.  
+회당 평균으로 환산하면 167ms → 0.3ms 수준이었고, Predicate도 filter() → access()로 바뀌어  
+인덱스 탐색 방식이 더 효율적으로 개선됐습니다.
 
 "어떤 컬럼을 인덱스에 넣을까"를 고민할 때  
 WHERE 절만 보는 게 아니라 SELECT, ORDER BY까지 고려해야 한다는 걸 배웠습니다.
 
 ---
 
-### 3. 리팩토링으로 얻은 깊이 있는 이해
+### 3. 테스트 코드가 없으면 리팩토링이 아니라 도박이다
 
-프로젝트 당시에는 "기능 동작"에만 집중했는데,  
-완료 후 코드를 다시 보면서 "왜 이렇게 해야 하는가"를 고민했습니다.
+리팩토링하면서 가장 크게 느낀 점입니다.
 
-`@Transactional`:  
-Spring이 알아서 트랜잭션 처리해주니까 안 써도 되는 줄 알았는데,  
-명시적으로 쓰면 timeout, isolation 같은 걸 제어할 수 있었습니다.
+소프트 딜리트를 구현할 때 `deleteMemberById()`를 `softWithdrawMember()`로 바꿔야 했는데,  
+이게 다른 곳에서 호출되고 있는지, 바꿨을 때 뭔가 깨지는지를  
+확인하려면 직접 실행해서 눈으로 보는 수밖에 없었습니다.
 
-Logger vs System.out:  
-System.out은 왜 안 쓰는지 궁금해서 찾아봤습니다.  
-로그 레벨 제어가 안 되고 성능에도 영향을 준다는 걸 알게 됐습니다.
+핵심 흐름에 대한 테스트를 먼저 보강하고 나서 수정했더니 달랐습니다.
+ArgumentCaptor로 실제 DB에 넘어가는 값을 검증하고,  
+`verify(memberMapper, never()).deleteMemberById(any())`처럼  
+"이건 절대 호출되면 안 된다"를 코드로 명시할 수 있었습니다.
 
-구현할 때는 "돌아가게" 만드는 데 급급했다면,  
-리팩토링하면서 "왜"를 이해하게 됐습니다.
-
-
----
-
-### 4. 읽기 전용 트랜잭션 분리
-
-조회 메서드 32개에 `@Transactional(readOnly = true)` 적용.
-
-**효과:**
-- DB가 읽기 전용으로 인식하여 최적화 수행
-- 불필요한 쓰기 락 방지
-- 트랜잭션 플러시 없이 성능 향상
-
-**예시:**
-```java
-@Transactional(readOnly = true)
-public GoodsPageResponse getGoodsListPage(GoodsFilterRequest filter, int limit) {
-    return goodsMapper.allSelect(filter);
-}
-```
-
-**적용 범위:**
-- 상품 목록/상세 조회: `getGoodsListPage()`, `getGoodsDetail()`
-- 주문 내역 조회: `getMyOrderListPage()`, `getOrderDetail()`
-- 리뷰 조회: `getReviewList()`, `getReviewDetail()`
-- (총 32개 메서드)
+테스트가 없을 때는 "아마 괜찮겠지"로 배포했다면,  
+테스트가 있으니까 "이 조건에서는 확실히 동작한다"고 말할 수 있게 됐습니다.
 
 ---
 
-## 개선하고 싶은 부분
+### 4. 기능이 돌아간다고 끝이 아니다
 
-현재는 JMeter로 통합 테스트만 진행했는데, 
-단위 테스트를 작성하면 리팩토링할 때 더 안전하게 수정할 수 있을 것 같습니다.
+기능 구현할 때는 "돌아가게" 만드는 데 급급했습니다.
 
-특히 재고 차감이나 예외 처리 같은 핵심 로직은 
-테스트 코드로 검증하는 게 맞다고 생각합니다.
+근데 리팩토링하면서 보니까 CSRF가 꺼져있고, FK가 빠져있고,  
+중복 체크가 Race Condition에 노출돼 있었습니다.  
+기능은 잘 돌아가는데 보안이나 데이터 무결성은 구멍이 뚫려있었던 거죠.
+
+기능 동작과 운영 가능한 코드는 다르다는 걸 이번에 제대로 배웠습니다.
+
+---
+
+## 남은 개선 여지
+
+| 항목 | 현재 상태 | 개선 방향 |
+|------|-----------|-----------|
+| 주민번호 저장 | 마스킹 저장 (원본 복원 불가) | 미수집 or AES 양방향 암호화 |
+| 페이지네이션 로직 | 서비스마다 중복 구현 | PageData\<T\> 제네릭으로 통일 |
+| 동시성 통합 테스트 | JMeter 수동 검증 | @SpringBootTest + ExecutorService 자동화 |
+| IPGO_NUM 타입 | VARCHAR2(50) — 문자 정렬 오류 가능 | NUMBER로 변경 |
 
 ---
 
 ### 정량적 개선
 
-| 지표 | 개선 |
-|------|------|
-| Logger 도입 | System.out 제거 (WebConfig, StartEndPageService) |
-| 동시성 제어 | FOR UPDATE WAIT 5 적용 |
-| 예외 세분화 | CannotAcquireLockException, IllegalStateException 구분 |
-| 복합 인덱스 | (GOODS_NUM, IPGO_QTY) Cost 66.1% 개선 |
-| 리뷰 제약 | UNIQUE (PURCHASE_NUM, GOODS_NUM) 추가 |
-| DB 정규화 | 수불부 설계로 재고 이력 추적 |
-| 성능 테스트 | JMeter 100명 동시성 테스트 완료 |
-| 실행 계획 | EXPLAIN PLAN으로 Cost 검증 (310 → 105) |
-| 통합 인증 | UNION ALL로 회원/관리자 인증 통합 |
+| 지표 | Before | After |
+|------|--------|-------|
+| CSRF 보호 | csrf.disable() | CookieCsrfTokenRepository 활성화 |
+| 테스트 코드 | contextLoads 외 실질적 테스트 없음 | 64개 (11개 파일) |
+| 회원·직원 ID/이메일 Unique 제약 | 서비스 코드에만 의존 | DB 레벨 4개 추가 |
+| FK | 누락 5개 | 추가 + QNA/MEMBERS 등 ON DELETE 옵션 정비 |
+| CHECK 제약 | 미흡 | 회원 상태, 주문 상태, 수량/금액, 리뷰 상태/평점 등 보강 |
+| 채번 방식 | MAX(col)+1 | 핵심 채번 경로를 Oracle Sequence 기반으로 전환 |
+| 주민번호·카드번호 | 원문 노출 | 마스킹 저장·표시 적용 (원본 복원 불가 — 개선 여지 있음) |
+| 복합 인덱스 Cost | 1,654 | 22 (98.7% 감소) |
+| 비관적 락 | 없음 | SELECT FOR UPDATE WAIT 5 |
+| Logger | System.out | SLF4J Logger |
+| 예외 세분화 | Exception 단일 처리 | CannotAcquireLockException / IllegalStateException |
+| 회원 탈퇴 | 물리 DELETE | 소프트 딜리트 |
 
 ---
 
-
 ## 연락처
 
-이메일: jpb1632@gmail.com
+이메일: jpb1632@gmail.com  
 GitHub: https://github.com/jpb1632
