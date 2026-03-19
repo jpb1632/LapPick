@@ -8,10 +8,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import javax.sql.DataSource;
@@ -69,6 +71,35 @@ class SecurityFlowTest {
     private UserDetailsService userDetailsService;
 
     @Test
+    void cartList_redirectsUnauthenticatedUserToLogin() throws Exception {
+        mockMvc.perform(get("/cart/cartList"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrlPattern("**/auth/login"));
+    }
+
+    @Test
+    void adminEndpoint_blocksMemberRole() throws Exception {
+        mockMvc.perform(post("/admin/goods/delete")
+                        .with(user("member1").authorities(() -> "ROLE_MEMBER"))
+                        .with(csrf())
+                        .param("nums", "goods_100001"))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(goodsService);
+    }
+
+    @Test
+    void memberEndpoint_blocksEmployeeRole() throws Exception {
+        mockMvc.perform(post("/member/withdraw")
+                        .with(user("employee1").authorities(() -> "ROLE_EMPLOYEE"))
+                        .with(csrf())
+                        .param("memberPw", "rawPw"))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(memberService);
+    }
+
+    @Test
     void cartDels_blocksRequestWithoutCsrf() throws Exception {
         mockMvc.perform(post("/cart/cartDels")
                         .with(user("member1").authorities(() -> "ROLE_MEMBER"))
@@ -106,7 +137,7 @@ class SecurityFlowTest {
 
     @Test
     void adminGoodsDelete_redirectsWithErrorMessageWhenDeleteIsBlocked() throws Exception {
-        doThrow(new IllegalStateException("주문 이력이나 문의가 남아 있는 상품은 삭제할 수 없습니다. goods_100001"))
+        doThrow(new IllegalStateException("blocked"))
                 .when(goodsService).deleteGoods(any(String[].class));
 
         mockMvc.perform(post("/admin/goods/delete")
@@ -115,7 +146,7 @@ class SecurityFlowTest {
                         .param("nums", "goods_100001"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/admin/goods"))
-                .andExpect(flash().attribute("error", "주문 이력이나 문의가 남아 있는 상품은 삭제할 수 없습니다. goods_100001"));
+                .andExpect(flash().attribute("error", "blocked"));
     }
 
     @Test

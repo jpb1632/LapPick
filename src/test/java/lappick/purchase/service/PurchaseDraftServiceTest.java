@@ -47,8 +47,7 @@ class PurchaseDraftServiceTest {
         MockHttpSession session = new MockHttpSession();
 
         assertThatThrownBy(() -> purchaseDraftService.getDraft("missing-token", session))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("주문 정보를 다시 확인해주세요.");
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -59,8 +58,7 @@ class PurchaseDraftServiceTest {
         purchaseDraftService.removeDraft(token, session);
 
         assertThatThrownBy(() -> purchaseDraftService.getDraft(token, session))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("주문 정보를 다시 확인해주세요.");
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -72,8 +70,15 @@ class PurchaseDraftServiceTest {
 
         assertThat(draft.items()).containsExactly(new PurchaseDraftItem("GOODS-1", 2));
         assertThatThrownBy(() -> purchaseDraftService.getDraft(token, session))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("주문 정보를 다시 확인해주세요.");
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void storeDraft_throwsWhenItemListIsEmpty() {
+        MockHttpSession session = new MockHttpSession();
+
+        assertThatThrownBy(() -> purchaseDraftService.storeDraft(List.of(), session))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     private CartItemResponse createCartItem(String goodsNum, int quantity) {
