@@ -82,7 +82,7 @@ public class AdminQnaController {
             ra.addFlashAttribute("answerBindingResult", bindingResult);
             ra.addFlashAttribute("qnaAnswerRequest", request);
             // returnUrl이 있으면 해당 경로로, 없으면 기본 목록 경로로 리다이렉트
-            String redirectUrl = (request.getReturnUrl() != null && !request.getReturnUrl().isEmpty()) ? request.getReturnUrl() : "/admin/qna";
+            String redirectUrl = resolveSafeReturnUrl(request.getReturnUrl());
             return "redirect:" + redirectUrl;
         }
 
@@ -91,18 +91,18 @@ public class AdminQnaController {
             ra.addFlashAttribute("message", request.getQnaNum() + "번 문의에 답변이 등록되었습니다.");
 
             // returnUrl이 있으면 해당 경로로, 없으면 기본 목록 경로로 리다이렉트
-            String redirectUrl = (request.getReturnUrl() != null && !request.getReturnUrl().isEmpty()) ? request.getReturnUrl() : "/admin/qna";
+            String redirectUrl = resolveSafeReturnUrl(request.getReturnUrl());
             return "redirect:" + redirectUrl;
 
         } catch (IllegalArgumentException e) {
              log.warn("QnA 답변 등록 실패: {}", e.getMessage());
              ra.addFlashAttribute("error", e.getMessage());
-             String redirectUrl = (request.getReturnUrl() != null && !request.getReturnUrl().isEmpty()) ? request.getReturnUrl() : "/admin/qna";
+             String redirectUrl = resolveSafeReturnUrl(request.getReturnUrl());
              return "redirect:" + redirectUrl;
         } catch (Exception e) {
             log.error("QnA 답변 등록 중 예상치 못한 오류 발생: qnaNum={}", request.getQnaNum(), e);
             ra.addFlashAttribute("error", "답변 등록 중 오류가 발생했습니다.");
-            String redirectUrl = (request.getReturnUrl() != null && !request.getReturnUrl().isEmpty()) ? request.getReturnUrl() : "/admin/qna";
+            String redirectUrl = resolveSafeReturnUrl(request.getReturnUrl());
             return "redirect:" + redirectUrl;
         }
     }
@@ -118,7 +118,7 @@ public class AdminQnaController {
             log.error("관리자 QnA 개별 삭제 중 오류 발생: qnaNum={}", qnaNum, e);
             ra.addFlashAttribute("error", "문의 삭제 중 오류가 발생했습니다.");
         }
-        return "redirect:" + returnUrl;
+        return "redirect:" + resolveSafeReturnUrl(returnUrl);
     }
 
     @PostMapping("/delete-bulk")
@@ -132,6 +132,19 @@ public class AdminQnaController {
             log.error("관리자 QnA 일괄 삭제 중 오류 발생", e);
             ra.addFlashAttribute("error", "문의 삭제 중 오류가 발생했습니다.");
         }
-        return "redirect:" + returnUrl;
+        return "redirect:" + resolveSafeReturnUrl(returnUrl);
+    }
+
+    private String resolveSafeReturnUrl(String returnUrl) {
+        if (returnUrl == null || returnUrl.isBlank()) {
+            return "/admin/qna";
+        }
+        if (!returnUrl.startsWith("/admin/qna")) {
+            return "/admin/qna";
+        }
+        if (returnUrl.startsWith("//") || returnUrl.contains("://")) {
+            return "/admin/qna";
+        }
+        return returnUrl;
     }
 }

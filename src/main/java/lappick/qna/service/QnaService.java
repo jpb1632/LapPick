@@ -83,9 +83,14 @@ public class QnaService {
              throw new IllegalArgumentException("문의할 주문 상품을 선택해주세요.");
         }
 
-        // 구매자 본인 확인 (선택 사항이지만 권장)
-        // PurchaseItemResponse purchaseItem = purchaseMapper.findPurchaseItemByKey(...);
-        // if (purchaseItem == null || !purchaseItem.getMemberNum().equals(member.getMemberNum())) { ... }
+        int deliveredPurchaseCount = purchaseMapper.countDeliveredPurchaseItemByMember(
+                purchaseNum,
+                goodsNum,
+                member.getMemberNum()
+        );
+        if (deliveredPurchaseCount == 0) {
+            throw new IllegalArgumentException("구매가 확인된 상품만 문의할 수 있습니다.");
+        }
 
         Qna qna = new Qna();
         qna.setMemberNum(member.getMemberNum());
