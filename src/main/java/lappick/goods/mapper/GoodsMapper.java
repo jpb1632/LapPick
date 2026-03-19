@@ -26,6 +26,7 @@ public interface GoodsMapper {
     void goodsDelete(List<String> nums);
     GoodsStockResponse selectOneWithStock(String goodsNum);
     List<GoodsResponse> selectGoodsByNumList(List<String> nums);
+    List<GoodsResponse> selectDeleteBlockedGoods(List<String> nums);
     
     // 비관적 락을 위한 메서드 선언
     String selectGoodsForUpdate(String goodsNum);

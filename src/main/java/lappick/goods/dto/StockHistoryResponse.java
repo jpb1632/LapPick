@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 public class StockHistoryResponse {
-    private Integer ipgoNum;
+    private String ipgoNum;
     private String goodsNum;
     private Integer ipgoQty;
     private Date ipgoDate;

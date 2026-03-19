@@ -238,7 +238,9 @@
                     <div class="contents-thumbnail">
                         <img th:src="@{/upload/{img}(img=${goods.goodsMainStoreImage})}" class="contents-thumbimg" alt="대표이미지" />
                     </div>
-                    <ul class="contents-thumblist" style="margin-bottom: 20px;">
+                    <ul class="contents-thumblist"
+                        style="margin-bottom: 20px;"
+                        th:if="${goods.goodsDetailStoreImage != null and !goods.goodsDetailStoreImage.isBlank()}">
                         <li class="contents-thumbitem" th:each="image : ${#strings.listSplit(goods.goodsDetailStoreImage, '/')}">
                             <img th:if="${!image.isEmpty()}" th:src="@{/upload/{imgName}(imgName=${image})}" class="contents-thumbimg" alt="썸네일" />
                         </li>
@@ -274,16 +276,16 @@
                     
                     <div class="contents-right-group">
                         
-                        <div th:if="${goods.stockQty <= 0}" class="stock-info out-of-stock" style="padding: 12px; font-size: 1.4rem; margin-bottom: 30px; margin-top: 10px;">
+                        <div th:if="${goods.stockQty == null or goods.stockQty <= 0}" class="stock-info out-of-stock" style="padding: 12px; font-size: 1.4rem; margin-bottom: 30px; margin-top: 10px;">
                             <p style="margin:0;">현재 품절된 상품입니다.</p>
                         </div>
-                        <div th:if="${goods.stockQty > 0 and goods.stockQty < 4}" class="stock-info low-stock" style="padding: 12px; font-size: 1.3rem; margin-bottom: 30px;">
+                        <div th:if="${goods.stockQty != null and goods.stockQty > 0 and goods.stockQty < 4}" class="stock-info low-stock" style="padding: 12px; font-size: 1.3rem; margin-bottom: 30px;">
                             <p style="margin:0;" th:text="|남은 수량: ${goods.stockQty}개 (재고가 얼마 남지 않았어요!)|"></p>
                         </div>
                         
                         <div class="contents-btn-group" style="margin-top: 30px;">
-                            <button id="cartBtn" class="btnset btnset-line" th:disabled="${goods.stockQty <= 0}">장바구니</button>
-                            <button id="buyItem" class="btnset" th:disabled="${goods.stockQty <= 0}">구매하기</button>
+                            <button id="cartBtn" class="btnset btnset-line" th:disabled="${goods.stockQty == null or goods.stockQty <= 0}">장바구니</button>
+                            <button id="buyItem" class="btnset" th:disabled="${goods.stockQty == null or goods.stockQty <= 0}">구매하기</button>
                         </div>
                     </div>
                 </div>
@@ -337,7 +339,7 @@
                     <span th:if="${i > review.reviewRating}" class="empty">★</span>
                 </th:block>
             </span>
-            <span th:text="${#strings.substring(review.memberId, 0, 3)} + '***'"></span>
+            <span th:text="${review.memberId == null ? '익명' : (#strings.length(review.memberId) <= 3 ? review.memberId : #strings.substring(review.memberId, 0, 3) + '***')}"></span>
             
             <span>
                 <span th:text="${#dates.format(review.reviewDate, 'yyyy.MM.dd')}"></span>
@@ -404,7 +406,7 @@
                                         <span th:if="${!isEmployee and (loginMemberNum == null or qna.memberNum != loginMemberNum)}">🔒 </span>
                                         <span th:text="${qna.qnaTitle}"></span>
                                     </td>
-                                    <td th:text="${#strings.substring(qna.memberId, 0, 3)} + '***'">mem***</td>
+                                    <td th:text="${qna.memberId == null ? '익명' : (#strings.length(qna.memberId) <= 3 ? qna.memberId : #strings.substring(qna.memberId, 0, 3) + '***')}">mem***</td>
                                     <td th:text="${#temporals.format(qna.qnaDate, 'yyyy-MM-dd')}">2025-09-25</td>
                                     </tr>
                                 <tr class="qna-content-row" th:id="'qna-content-' + ${qna.qnaNum}">
@@ -413,7 +415,7 @@
                                             <div class="qa-icon question">Q</div>
                                             <div class="qa-main">
                                                 <div class="qa-meta">
-                                                    <span class="author" th:text="${#strings.substring(qna.memberId, 0, 3)} + '***'"></span>
+                                                    <span class="author" th:text="${qna.memberId == null ? '익명' : (#strings.length(qna.memberId) <= 3 ? qna.memberId : #strings.substring(qna.memberId, 0, 3) + '***')}"></span>
                                                     <span class="date" th:text="${#temporals.format(qna.qnaDate, 'yyyy.MM.dd HH:mm')}"></span>
                                                     </div>
                                                 <p class="qa-text" th:text="${qna.qnaContent}"></p>
@@ -698,14 +700,13 @@
            const openContent = $('.qna-content-row:visible');
            if (openContent.length > 0) {
                if (openContent.is(targetContent)) {
-                   targetContent.slideUp(150);
+                   targetContent.hide();
                } else {
-                   openContent.slideUp(150, function() {
-                       targetContent.slideDown(150);
-                   });
+                   openContent.hide();
+                   targetContent.css('display', 'table-row');
                }
            } else {
-               targetContent.slideDown(150);
+               targetContent.css('display', 'table-row');
            }
        });
 

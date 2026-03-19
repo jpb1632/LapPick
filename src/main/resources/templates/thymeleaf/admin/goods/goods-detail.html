@@ -89,12 +89,12 @@
             <tbody>
             <tr><th>상품번호</th><td th:text="${goodsCommand.goodsNum}"></td></tr>
             <tr><th>상품명</th><td th:text="${goodsCommand.goodsName}"></td></tr>
-            <tr><th>가격</th><td th:text="${#numbers.formatInteger(goodsCommand.goodsPrice, 0, 'COMMA')} + '원'"></td></tr>
-            <tr><th>현재 재고</th><td th:text="${goodsCommand.stockQty} + '개'"></td></tr>
+            <tr><th>가격</th><td th:text="${goodsCommand.goodsPrice == null ? '-' : #numbers.formatInteger(goodsCommand.goodsPrice, 0, 'COMMA') + '원'}"></td></tr>
+            <tr><th>현재 재고</th><td th:text="${goodsCommand.stockQty == null ? '0개' : goodsCommand.stockQty + '개'}"></td></tr>
             <tr><th>브랜드</th><td th:text="${goodsCommand.goodsBrand}"></td></tr>
             <tr><th>용도</th><td th:text="${goodsCommand.goodsPurpose}"></td></tr>
-            <tr><th>화면 크기</th><td th:text="${goodsCommand.goodsScreenSize} + '인치'"></td></tr>
-            <tr><th>무게</th><td th:text="${goodsCommand.goodsWeight} + 'kg'"></td></tr>
+            <tr><th>화면 크기</th><td th:text="${goodsCommand.goodsScreenSize == null ? '-' : goodsCommand.goodsScreenSize + '인치'}"></td></tr>
+            <tr><th>무게</th><td th:text="${goodsCommand.goodsWeight == null ? '-' : goodsCommand.goodsWeight + 'kg'}"></td></tr>
             <tr><th>상품설명</th><td style="white-space: pre-wrap;" th:text="${goodsCommand.goodsContents}"></td></tr>
             <tr>
               <th>키워드</th>
@@ -136,7 +136,7 @@
               </td>
             </tr>
             <tr>
-              <th>등록일</th><td th:text="${#dates.format(goodsCommand.goodsDate, 'yyyy-MM-dd')}"></td>
+              <th>등록일</th><td th:text="${goodsCommand.goodsDate == null ? '-' : #dates.format(goodsCommand.goodsDate, 'yyyy-MM-dd')}"></td>
             </tr>
             </tbody>
           </table>

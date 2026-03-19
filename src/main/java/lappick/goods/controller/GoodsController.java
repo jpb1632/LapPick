@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import lappick.common.dto.PageData;
 import lappick.goods.dto.GoodsFilterRequest;
@@ -59,11 +60,13 @@ public class GoodsController {
             @PathVariable("goodsNum") String goodsNum,
             @RequestParam(name = "reviewPage", defaultValue = "1") int reviewPage,
             @RequestParam(name = "qnaPage", defaultValue = "1") int qnaPage,
-            Model model, Principal principal) {
+            Model model, Principal principal, RedirectAttributes ra) {
 
         GoodsStockResponse dto = goodsService.getGoodsDetailWithStock(goodsNum);
         
         if (dto == null) {
+            ra.addFlashAttribute("error", "상품 정보를 찾을 수 없습니다.");
+            return "redirect:/goods/goodsFullList";
         }
 
         // QnA 목록 조회 (페이징)

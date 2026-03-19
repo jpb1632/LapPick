@@ -34,6 +34,7 @@
           </div>
 
          <form id="goodsEditForm" th:action="@{/admin/goods/update}" th:object="${goodsCommand}" method="post" enctype="multipart/form-data" autocomplete="off">
+            <div th:if="${error}" class="error-message" style="margin-bottom:12px;" th:text="${error}"></div>
             <input type="hidden" th:field="*{goodsNum}">
 
             <table>

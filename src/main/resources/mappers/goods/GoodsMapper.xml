@@ -159,6 +159,30 @@
         #{num}
     </foreach>
 </select>
+
+<select id="selectDeleteBlockedGoods" parameterType="java.util.List" resultType="lappick.goods.dto.GoodsResponse">
+    SELECT
+        GOODS_NUM,
+        GOODS_NAME
+    FROM GOODS G
+    WHERE G.GOODS_NUM IN
+    <foreach item="num" collection="list" open="(" separator="," close=")">
+        #{num}
+    </foreach>
+    AND (
+        EXISTS (
+            SELECT 1
+            FROM PURCHASE_LIST PL
+            WHERE PL.GOODS_NUM = G.GOODS_NUM
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM QNA Q
+            WHERE Q.GOODS_NUM = G.GOODS_NUM
+        )
+    )
+    ORDER BY G.GOODS_NUM
+</select>
   
 <insert id="insertGoodsIpgo">
   INSERT INTO GOODS_IPGO (

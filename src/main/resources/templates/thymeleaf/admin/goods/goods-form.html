@@ -34,11 +34,12 @@
           </div>
 
           <form id="goodsWriteForm" th:action="@{/admin/goods/add}" th:object="${goodsCommand}" method="post" enctype="multipart/form-data" autocomplete="off">
+            <div th:if="${error}" class="error-message" style="margin-bottom:12px;" th:text="${error}"></div>
             <table>
            <tbody>
               <tr>
                 <th>상품번호</th>
-                <td><input type="text" th:field="*{goodsNum}" readonly></td>
+                <td><input type="text" th:value="${goodsCommand.goodsNum != null ? goodsCommand.goodsNum : '등록 시 자동 생성됩니다.'}" readonly></td>
               </tr>
               <tr>
                 <th>상품명</th>
