@@ -24,6 +24,12 @@
         )
 </select>
 
+<select id="selectNextPrefixedId" parameterType="map" resultType="string">
+    SELECT
+        #{prefix} || TO_CHAR(${sequenceName}.NEXTVAL)
+    FROM dual
+</select>
+
 <delete id="numsDelete" >
 	delete from ${tableName}
 	where ${columnName} in 

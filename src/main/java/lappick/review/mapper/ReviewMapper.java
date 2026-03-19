@@ -27,6 +27,7 @@ public interface ReviewMapper {
     Review selectReview(Long reviewNum);
 
     void deleteReview(Long reviewNum);
+    int deleteReviewsByMemberNums(List<String> memberNums);
 
     void updateReview(Review dto);
 

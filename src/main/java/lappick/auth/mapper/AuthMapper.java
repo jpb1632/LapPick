@@ -10,16 +10,16 @@ import lappick.member.dto.MemberResponse;
 @Mapper
 @Repository
 public interface AuthMapper {
-    
-    public Integer userInsert(MemberResponse dto);
 
-    public Integer idCheckSelectOne(@Param("userId") String userId);
-    public Integer emailCheckSelectOne(@Param("userEmail") String userEmail);
-    public AuthDetails loginSelectOne(String userId);
+    Integer userInsert(MemberResponse dto);
 
-    public String findIdByNameAndEmail(@Param("memberName") String memberName, @Param("memberEmail") String memberEmail);
-    public MemberResponse findByIdAndEmail(@Param("memberId") String memberId, @Param("memberEmail") String memberEmail);
-    public void memberPwUpdate(MemberResponse dto);
-    
-    public String selectPwById(String memberId);
+    Integer idCheckSelectOne(@Param("userId") String userId);
+    Integer emailCheckSelectOne(@Param("userEmail") String userEmail);
+    AuthDetails loginSelectOne(String userId);
+
+    String findIdByNameAndEmail(@Param("memberName") String memberName, @Param("memberEmail") String memberEmail);
+    MemberResponse findByIdAndEmail(@Param("memberId") String memberId, @Param("memberEmail") String memberEmail);
+    void memberPwUpdate(MemberResponse dto);
+    String selectPwById(String memberId);
+    int deletePersistentLoginsByUsername(String username);
 }

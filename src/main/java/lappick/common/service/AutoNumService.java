@@ -14,4 +14,8 @@ public class AutoNumService {
         String autoNum = autoNumMapper.AutoNumSelect(tableName, colName, preFix);
         return autoNum;
     }
+
+    public String nextIdFromSequence(String sequenceName, String prefix) {
+        return autoNumMapper.selectNextPrefixedId(sequenceName, prefix);
+    }
 }

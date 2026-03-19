@@ -1,6 +1,7 @@
 package lappick.admin.employee.service;
 
 import java.util.List;
+import java.util.Objects;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -10,6 +11,7 @@ import lappick.admin.employee.dto.AdminEmployeePageResponse;
 import lappick.admin.employee.dto.EmployeeResponse;
 import lappick.admin.employee.dto.EmployeeUpdateRequest;
 import lappick.admin.employee.mapper.EmployeeMapper;
+import lappick.auth.mapper.AuthMapper;
 import lappick.common.dto.StartEndPageDTO;
 import lombok.RequiredArgsConstructor;
 
@@ -19,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 public class AdminEmployeeService {
 
     private final EmployeeMapper employeeMapper;
+    private final AuthMapper authMapper;
     private final PasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)
@@ -30,13 +33,12 @@ public class AdminEmployeeService {
         StartEndPageDTO sepDTO = new StartEndPageDTO(startRow, endRow, searchWord);
         List<EmployeeResponse> list = employeeMapper.employeeAllSelect(sepDTO);
         int total = employeeMapper.employeeCount(searchWord);
-        
+
         int totalPages = (total > 0) ? (int) Math.ceil((double) total / limit) : 0;
-        int pageBlock = 5; // 페이지 블록 크기
+        int pageBlock = 5;
         int startPage = ((page - 1) / pageBlock) * pageBlock + 1;
         int endPage = Math.min(startPage + pageBlock - 1, totalPages);
 
-        // 엣지 케이스 처리 (total=0 일 때 endPage < startPage 방지)
         if (totalPages == 0 || endPage < startPage) {
             endPage = startPage;
         }
@@ -45,7 +47,6 @@ public class AdminEmployeeService {
                 .total(total).totalPages(totalPages).searchWord(searchWord)
                 .startPage(startPage)
                 .endPage(endPage)
-                // .hasPrev()/.hasNext()는 DTO의 메서드가 자동 계산
                 .build();
     }
 
@@ -55,8 +56,9 @@ public class AdminEmployeeService {
     }
 
     public void createEmployee(EmployeeUpdateRequest command) {
+        validateNewEmployee(command.getEmpId(), command.getEmpEmail());
+
         EmployeeResponse dto = new EmployeeResponse();
-        
         dto.setEmpNum(command.getEmpNum());
         dto.setEmpId(command.getEmpId());
         dto.setEmpPw(passwordEncoder.encode(command.getEmpPw()));
@@ -68,15 +70,18 @@ public class AdminEmployeeService {
         dto.setEmpAddrDetail(command.getEmpAddrDetail());
         dto.setEmpPost(command.getEmpPost());
         dto.setEmpHireDate(command.getEmpHireDate());
-        
+
         employeeMapper.employeeInsert(dto);
     }
 
     public void updateEmployee(EmployeeUpdateRequest command) {
-        // 1. DB에서 기존의 완전한 정보를 가져옵니다.
         EmployeeResponse existingInfo = employeeMapper.selectByEmpNum(command.getEmpNum());
-        
-        // 2. 폼에서 넘어온 수정된 값들만 기존 정보(existingInfo)에 덮어씁니다.
+        if (existingInfo == null) {
+            throw new IllegalArgumentException("수정할 직원 정보를 찾을 수 없습니다.");
+        }
+
+        validateChangedEmail(existingInfo.getEmpEmail(), command.getEmpEmail());
+
         existingInfo.setEmpName(command.getEmpName());
         existingInfo.setEmpJumin(command.getEmpJumin());
         existingInfo.setEmpPhone(command.getEmpPhone());
@@ -86,11 +91,25 @@ public class AdminEmployeeService {
         existingInfo.setEmpPost(command.getEmpPost());
         existingInfo.setEmpHireDate(command.getEmpHireDate());
 
-        // 3. 완전한 데이터가 담긴 DTO로 업데이트를 수행합니다.
         employeeMapper.employeeUpdate(existingInfo);
     }
 
     public void deleteEmployees(String[] empNums) {
         employeeMapper.employeesDelete(empNums);
+    }
+
+    private void validateNewEmployee(String empId, String empEmail) {
+        if (authMapper.idCheckSelectOne(empId) != null) {
+            throw new IllegalArgumentException("이미 사용 중인 아이디입니다.");
+        }
+        if (authMapper.emailCheckSelectOne(empEmail) != null) {
+            throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
+        }
+    }
+
+    private void validateChangedEmail(String currentEmail, String newEmail) {
+        if (!Objects.equals(currentEmail, newEmail) && authMapper.emailCheckSelectOne(newEmail) != null) {
+            throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
+        }
     }
 }

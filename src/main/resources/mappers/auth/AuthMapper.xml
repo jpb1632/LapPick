@@ -4,11 +4,10 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="lappick.auth.mapper.AuthMapper">
 
-      <insert id="userInsert" parameterType="lappick.member.dto.MemberResponse">
+    <insert id="userInsert" parameterType="lappick.member.dto.MemberResponse">
         <selectKey keyProperty="memberNum" resultType="String" order="BEFORE">
-            SELECT CONCAT('mem_', 
-                          COALESCE(CAST(SUBSTR(MAX(member_num), 5) AS INTEGER), 100000) + 1) 
-            FROM members
+            SELECT 'mem_' || TO_CHAR(MEMBER_NUM_SEQ.NEXTVAL)
+            FROM dual
         </selectKey>
 
         INSERT INTO members(
@@ -25,73 +24,84 @@
         )
     </insert>
 
-    <select id="idCheckSelectOne" parameterType="string" resultType="integer"> 
+    <select id="idCheckSelectOne" parameterType="string" resultType="integer">
         select 1 from members where member_id = #{userId}
         union
         select 1 from employees where emp_id = #{userId}
     </select>
-    
+
     <select id="emailCheckSelectOne" parameterType="string" resultType="integer">
         select 1 from members where member_email = #{userEmail}
         union
         select 1 from employees where emp_email = #{userEmail}
     </select>
-    
-   <resultMap type="lappick.auth.dto.AuthDetails" id="authResultMap">
+
+    <resultMap type="lappick.auth.dto.AuthDetails" id="authResultMap">
         <result column="userId" property="userId" jdbcType="VARCHAR"/>
         <result column="userPw" property="userPw" jdbcType="VARCHAR"/>
         <result column="userName" property="userName" jdbcType="VARCHAR"/>
         <result column="userEmail" property="userEmail" jdbcType="VARCHAR"/>
         <result column="grade" property="grade" jdbcType="VARCHAR"/>
     </resultMap>
-    
-    
-   <select id="loginSelectOne" parameterType="string" resultMap="authResultMap">
-      select
-        member_id   as "userId",
-        member_pw   as "userPw",
-        member_name as "userName",
-        member_email as "userEmail",
-        'mem'       as "grade"
-      from members
-      where member_id = #{userId}
-      union all
-      select
-        emp_id      as "userId",
-        emp_pw      as "userPw",
-        emp_name    as "userName",
-        emp_email   as "userEmail",
-        'emp'       as "grade"
-      from employees
-      where emp_id = #{userId}
-      fetch first 1 rows only
+
+    <select id="loginSelectOne" parameterType="string" resultMap="authResultMap">
+        select
+            member_id as "userId",
+            member_pw as "userPw",
+            member_name as "userName",
+            member_email as "userEmail",
+            'mem' as "grade"
+        from members
+        where member_id = #{userId}
+          and member_status = 'ACTIVE'
+        union all
+        select
+            emp_id as "userId",
+            emp_pw as "userPw",
+            emp_name as "userName",
+            emp_email as "userEmail",
+            'emp' as "grade"
+        from employees
+        where emp_id = #{userId}
+        fetch first 1 rows only
     </select>
 
     <select id="findIdByNameAndEmail" resultType="string">
         SELECT MEMBER_ID
         FROM MEMBERS
-        WHERE MEMBER_NAME = #{memberName} AND MEMBER_EMAIL = #{memberEmail}
+        WHERE MEMBER_NAME = #{memberName}
+          AND MEMBER_EMAIL = #{memberEmail}
+          AND MEMBER_STATUS = 'ACTIVE'
     </select>
 
     <select id="findByIdAndEmail" resultType="lappick.member.dto.MemberResponse">
-        SELECT 
+        SELECT
             MEMBER_NUM, MEMBER_NAME, MEMBER_ID, MEMBER_PW, MEMBER_ADDR,
             MEMBER_ADDR_DETAIL, MEMBER_POST, MEMBER_REGIST, GENDER,
             MEMBER_PHONE1, MEMBER_PHONE2, MEMBER_EMAIL, MEMBER_BIRTH,
             MEMBER_POINT, MEMBER_EMAIL_CONF
         FROM MEMBERS
-        WHERE MEMBER_ID = #{memberId} AND MEMBER_EMAIL = #{memberEmail}
+        WHERE MEMBER_ID = #{memberId}
+          AND MEMBER_EMAIL = #{memberEmail}
+          AND MEMBER_STATUS = 'ACTIVE'
     </select>
-    
+
     <update id="memberPwUpdate" parameterType="lappick.member.dto.MemberResponse">
         UPDATE members
         SET member_pw = #{memberPw}
         WHERE member_id = #{memberId}
+          AND MEMBER_STATUS = 'ACTIVE'
     </update>
-    
+
     <select id="selectPwById" parameterType="string" resultType="string">
         SELECT member_pw
         FROM members
         WHERE member_id = #{memberId}
+          AND MEMBER_STATUS = 'ACTIVE'
     </select>
+
+    <delete id="deletePersistentLoginsByUsername" parameterType="string">
+        DELETE FROM persistent_logins
+        WHERE username = #{username}
+    </delete>
 </mapper>

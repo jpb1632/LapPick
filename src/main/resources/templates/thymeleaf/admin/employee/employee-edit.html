@@ -38,6 +38,9 @@
          <form id="employeeEditForm"
                 th:action="${isAdminContext} ? @{/admin/employees/edit} : @{/employee/my-page/update}"
                 th:object="${employeeCommand}" method="post">
+            <div class="alert" th:if="${#fields.hasGlobalErrors()}" style="background:#fef2f2; color:#b91c1c; border-color:#fecaca; margin-bottom:12px;">
+              <div th:each="err : ${#fields.globalErrors()}" th:text="${err}"></div>
+            </div>
             <input type="hidden" th:field="*{empNum}">
             <input type="hidden" th:field="*{empId}">
 

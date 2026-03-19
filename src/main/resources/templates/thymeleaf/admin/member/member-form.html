@@ -43,6 +43,9 @@
           </div>
 
           <form id="memberNewForm" th:action="@{/admin/members/add}" th:object="${member}" method="post" autocomplete="off">
+            <div class="alert" th:if="${#fields.hasGlobalErrors()}" style="background:#fef2f2; color:#b91c1c; border-color:#fecaca;">
+              <div th:each="err : ${#fields.globalErrors()}" th:text="${err}"></div>
+            </div>
             <input type="hidden" name="page"       th:value="${param.page != null ? param.page[0] : 1}">
             <input type="hidden" name="searchWord" th:value="${param.searchWord != null ? param.searchWord[0] : null}">
             <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">

@@ -107,7 +107,14 @@
         SELECT * FROM (
             SELECT ROWNUM AS RN, T.*
             FROM (
-                SELECT P.PURCHASE_NUM, P.PURCHASE_DATE, P.PURCHASE_TOTAL, P.PURCHASE_STATUS, P.MEMBER_NUM, M.MEMBER_ID, M.MEMBER_NAME
+                SELECT
+                    P.PURCHASE_NUM,
+                    P.PURCHASE_DATE,
+                    P.PURCHASE_TOTAL,
+                    P.PURCHASE_STATUS,
+                    P.MEMBER_NUM,
+                    CASE WHEN NVL(M.MEMBER_STATUS, 'ACTIVE') = 'WITHDRAWN' THEN '탈퇴회원' ELSE M.MEMBER_ID END AS MEMBER_ID,
+                    CASE WHEN NVL(M.MEMBER_STATUS, 'ACTIVE') = 'WITHDRAWN' THEN '탈퇴회원' ELSE M.MEMBER_NAME END AS MEMBER_NAME
                 FROM PURCHASE P
                 JOIN MEMBERS M ON P.MEMBER_NUM = M.MEMBER_NUM
                 <where>
@@ -139,7 +146,8 @@
             PL.PURCHASE_NUM AS PL_PURCHASE_NUM, PL.GOODS_NUM AS PL_GOODS_NUM, PL.PURCHASE_QTY, PL.PURCHASE_PRICE,
             G.GOODS_NUM, G.GOODS_NAME, G.GOODS_MAIN_STORE_IMAGE, G.GOODS_CONTENTS,
             D.DELIVERY_COMPANY, D.TRACKING_NUMBER,
-            M.MEMBER_ID, M.MEMBER_NAME
+            CASE WHEN NVL(M.MEMBER_STATUS, 'ACTIVE') = 'WITHDRAWN' THEN '탈퇴회원' ELSE M.MEMBER_ID END AS MEMBER_ID,
+            CASE WHEN NVL(M.MEMBER_STATUS, 'ACTIVE') = 'WITHDRAWN' THEN '탈퇴회원' ELSE M.MEMBER_NAME END AS MEMBER_NAME
         FROM PURCHASE P
         LEFT JOIN PURCHASE_LIST PL ON P.PURCHASE_NUM = PL.PURCHASE_NUM
         LEFT JOIN GOODS G ON PL.GOODS_NUM = G.GOODS_NUM
@@ -156,7 +164,8 @@
             PL.PURCHASE_NUM AS PL_PURCHASE_NUM, PL.GOODS_NUM AS PL_GOODS_NUM, PL.PURCHASE_QTY, PL.PURCHASE_PRICE,
             G.GOODS_NUM, G.GOODS_NAME, G.GOODS_MAIN_STORE_IMAGE, G.GOODS_CONTENTS,
             D.DELIVERY_COMPANY, D.TRACKING_NUMBER,
-            M.MEMBER_ID, M.MEMBER_NAME
+            CASE WHEN NVL(M.MEMBER_STATUS, 'ACTIVE') = 'WITHDRAWN' THEN '탈퇴회원' ELSE M.MEMBER_ID END AS MEMBER_ID,
+            CASE WHEN NVL(M.MEMBER_STATUS, 'ACTIVE') = 'WITHDRAWN' THEN '탈퇴회원' ELSE M.MEMBER_NAME END AS MEMBER_NAME
         FROM PURCHASE P
         LEFT JOIN PURCHASE_LIST PL ON P.PURCHASE_NUM = PL.PURCHASE_NUM
         LEFT JOIN GOODS G ON PL.GOODS_NUM = G.GOODS_NUM
@@ -195,6 +204,21 @@
         LEFT JOIN REVIEWS R ON P.PURCHASE_NUM = R.PURCHASE_NUM AND PL.GOODS_NUM = R.GOODS_NUM
         WHERE P.MEMBER_NUM = #{memberNum}
         ORDER BY P.PURCHASE_DATE DESC, G.GOODS_NAME ASC
+    </select>
+
+    <select id="countPurchasesByMemberNum" parameterType="string" resultType="int">
+        SELECT COUNT(*)
+        FROM PURCHASE
+        WHERE MEMBER_NUM = #{memberNum}
+    </select>
+
+    <select id="selectMemberNumsWithPurchases" parameterType="list" resultType="string">
+        SELECT DISTINCT MEMBER_NUM
+        FROM PURCHASE
+        WHERE MEMBER_NUM IN
+        <foreach collection="list" item="memberNum" open="(" separator="," close=")">
+            #{memberNum}
+        </foreach>
     </select>
 
 </mapper>

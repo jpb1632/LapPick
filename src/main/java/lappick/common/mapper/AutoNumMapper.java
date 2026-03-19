@@ -9,4 +9,8 @@ public interface AutoNumMapper {
         @Param("tableName") String tableName, 
         @Param("colName") String colName, 
         @Param("preFix") String preFix);
+
+    public String selectNextPrefixedId(
+        @Param("sequenceName") String sequenceName,
+        @Param("prefix") String prefix);
 }

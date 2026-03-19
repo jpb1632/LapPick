@@ -1,17 +1,23 @@
 package lappick.admin.member.service;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import lappick.admin.member.dto.AdminMemberPageResponse;
 import lappick.auth.mapper.AuthMapper;
+import lappick.cart.mapper.CartMapper;
 import lappick.common.dto.StartEndPageDTO;
 import lappick.member.dto.MemberResponse;
 import lappick.member.dto.MemberUpdateRequest;
 import lappick.member.mapper.MemberMapper;
+import lappick.purchase.mapper.PurchaseMapper;
 import lappick.qna.mapper.QnaMapper;
+import lappick.review.mapper.ReviewMapper;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -23,11 +29,14 @@ public class AdminMemberService {
     private final AuthMapper authMapper;
     private final PasswordEncoder passwordEncoder;
     private final QnaMapper qnaMapper;
+    private final PurchaseMapper purchaseMapper;
+    private final ReviewMapper reviewMapper;
+    private final CartMapper cartMapper;
 
     @Transactional(readOnly = true)
     public AdminMemberPageResponse getMemberListPage(Integer page, Integer size, String searchWord) {
         int p = (page == null || page < 1) ? 1 : page;
-        int s = (size == null || size < 1) ? 5 : size; // 기본값 5 (컨트롤러와 일치)
+        int s = (size == null || size < 1) ? 5 : size;
 
         long startRow = (p - 1L) * s + 1;
         long endRow = p * 1L * s;
@@ -35,13 +44,12 @@ public class AdminMemberService {
         StartEndPageDTO sep = new StartEndPageDTO(startRow, endRow, searchWord);
         List<MemberResponse> list = memberMapper.memberSelectList(sep);
         int total = memberMapper.memberCountBySearch(searchWord);
-        
+
         int totalPages = (total > 0) ? (int) Math.ceil((double) total / s) : 0;
         int pageBlock = 5;
         int startPage = ((p - 1) / pageBlock) * pageBlock + 1;
         int endPage = Math.min(startPage + pageBlock - 1, totalPages);
-        
-        // 엣지 케이스 처리 (total=0 일 때 endPage < startPage 방지)
+
         if (totalPages == 0 || endPage < startPage) {
             endPage = startPage;
         }
@@ -53,15 +61,17 @@ public class AdminMemberService {
                 .searchWord(searchWord)
                 .startPage(startPage)
                 .endPage(endPage)
-                // .hasPrev()/.hasNext()는 DTO의 메서드가 자동 계산
                 .build();
     }
+
     @Transactional(readOnly = true)
     public MemberResponse getMemberDetail(String memberNum) {
         return memberMapper.memberSelectOneByNum(memberNum);
     }
 
     public void createMember(MemberUpdateRequest command) {
+        validateNewMember(command.getMemberId(), command.getMemberEmail());
+
         MemberResponse dto = new MemberResponse();
         dto.setMemberId(command.getMemberId());
         dto.setMemberName(command.getMemberName());
@@ -73,19 +83,19 @@ public class AdminMemberService {
         dto.setMemberPhone2(command.getMemberPhone2());
         dto.setMemberEmail(command.getMemberEmail());
         dto.setMemberBirth(command.getMemberBirth());
-        
-        // 비밀번호 암호화
-        String hashedPassword = passwordEncoder.encode(command.getMemberPw());
-        dto.setMemberPw(hashedPassword);
+        dto.setMemberPw(passwordEncoder.encode(command.getMemberPw()));
 
-        authMapper.userInsert(dto); 
+        authMapper.userInsert(dto);
     }
 
     public void updateMember(MemberUpdateRequest command) {
-        // 1. DB에서 기존의 완전한 회원 정보를 가져옵니다.
         MemberResponse existingInfo = memberMapper.memberSelectOneByNum(command.getMemberNum());
-        
-        // 2. 폼에서 넘어온 수정된 값들만 기존 정보(existingInfo)에 덮어씁니다.
+        if (existingInfo == null) {
+            throw new IllegalArgumentException("수정할 회원 정보를 찾을 수 없습니다.");
+        }
+
+        validateChangedEmail(existingInfo.getMemberEmail(), command.getMemberEmail());
+
         existingInfo.setMemberName(command.getMemberName());
         existingInfo.setMemberAddr(command.getMemberAddr());
         existingInfo.setMemberAddrDetail(command.getMemberAddrDetail());
@@ -95,16 +105,62 @@ public class AdminMemberService {
         existingInfo.setMemberPhone2(command.getMemberPhone2());
         existingInfo.setMemberEmail(command.getMemberEmail());
         existingInfo.setMemberBirth(command.getMemberBirth());
-        
-        // 3. 완전한 데이터가 담긴 DTO로 업데이트를 수행합니다.
+
         memberMapper.memberUpdate(existingInfo);
     }
 
     public int deleteMembers(List<String> memberNums) {
-        // 1. 회원 삭제 전에 관련 QnA 데이터를 먼저 삭제합니다.
-        qnaMapper.deleteQnaByMemberNums(memberNums);
-        
-        // 2. QnA 삭제 후 회원 데이터를 삭제합니다.
-        return memberMapper.memberDelete(memberNums);
+        List<String> targetMemberNums = memberNums.stream()
+                .filter(memberNum -> memberNum != null && !memberNum.isBlank())
+                .distinct()
+                .collect(Collectors.toList());
+
+        if (targetMemberNums.isEmpty()) {
+            throw new IllegalArgumentException("삭제할 회원을 선택해주세요.");
+        }
+
+        List<String> blockedMemberNums = purchaseMapper.selectMemberNumsWithPurchases(targetMemberNums);
+        if (!blockedMemberNums.isEmpty()) {
+            throw new IllegalStateException(buildDeleteBlockedMessage(blockedMemberNums));
+        }
+
+        cartMapper.deleteCartByMemberNums(targetMemberNums);
+        reviewMapper.deleteReviewsByMemberNums(targetMemberNums);
+        qnaMapper.deleteQnaByMemberNums(targetMemberNums);
+        return memberMapper.memberDelete(targetMemberNums);
+    }
+
+    private void validateNewMember(String memberId, String memberEmail) {
+        if (authMapper.idCheckSelectOne(memberId) != null) {
+            throw new IllegalArgumentException("이미 사용 중인 아이디입니다.");
+        }
+        if (authMapper.emailCheckSelectOne(memberEmail) != null) {
+            throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
+        }
+    }
+
+    private void validateChangedEmail(String currentEmail, String newEmail) {
+        if (!Objects.equals(currentEmail, newEmail) && authMapper.emailCheckSelectOne(newEmail) != null) {
+            throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
+        }
+    }
+
+    private String buildDeleteBlockedMessage(List<String> blockedMemberNums) {
+        String blockedMembers = blockedMemberNums.stream()
+                .limit(3)
+                .map(memberNum -> {
+                    MemberResponse member = memberMapper.memberSelectOneByNum(memberNum);
+                    if (member == null) {
+                        return memberNum;
+                    }
+                    return member.getMemberId() + "(" + memberNum + ")";
+                })
+                .collect(Collectors.joining(", "));
+
+        if (blockedMemberNums.size() > 3) {
+            blockedMembers += " 외 " + (blockedMemberNums.size() - 3) + "명";
+        }
+
+        return "주문 이력이 있는 회원은 삭제할 수 없습니다. " + blockedMembers;
     }
 }

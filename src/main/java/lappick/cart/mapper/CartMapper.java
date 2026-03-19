@@ -24,4 +24,6 @@ public interface CartMapper {
 	public int goodsNumsDelete(Map<String, Object> condition);
 	
 	public int countCartItems(String memberNum);
+
+    public int deleteCartByMemberNums(List<String> memberNums);
 }

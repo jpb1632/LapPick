@@ -36,7 +36,8 @@
         SELECT
             R.REVIEW_NUM, R.GOODS_NUM, R.MEMBER_NUM, R.PURCHASE_NUM,
             R.REVIEW_RATING, R.REVIEW_CONTENT, R.REVIEW_IMAGE, R.REVIEW_DATE, R.REVIEW_STATUS,
-            R.REVIEW_MOD_DATE, M.MEMBER_ID,
+            R.REVIEW_MOD_DATE,
+            CASE WHEN NVL(M.MEMBER_STATUS, 'ACTIVE') = 'WITHDRAWN' THEN '탈퇴회원' ELSE M.MEMBER_ID END AS MEMBER_ID,
             G.GOODS_NAME
         FROM REVIEWS R
         JOIN MEMBERS M ON R.MEMBER_NUM = M.MEMBER_NUM
@@ -74,7 +75,9 @@
                 SELECT
                     R.REVIEW_NUM, R.GOODS_NUM, R.MEMBER_NUM, R.PURCHASE_NUM,
                     R.REVIEW_RATING, R.REVIEW_CONTENT, R.REVIEW_IMAGE, R.REVIEW_DATE, R.REVIEW_STATUS,
-                    R.REVIEW_MOD_DATE, G.GOODS_NAME, M.MEMBER_ID FROM REVIEWS R
+                    R.REVIEW_MOD_DATE, G.GOODS_NAME,
+                    CASE WHEN NVL(M.MEMBER_STATUS, 'ACTIVE') = 'WITHDRAWN' THEN '탈퇴회원' ELSE M.MEMBER_ID END AS MEMBER_ID
+                FROM REVIEWS R
                 JOIN GOODS G ON R.GOODS_NUM = G.GOODS_NUM
                 JOIN MEMBERS M ON R.MEMBER_NUM = M.MEMBER_NUM WHERE R.MEMBER_NUM = #{memberNum}
                 ORDER BY R.REVIEW_DATE DESC
@@ -92,6 +95,14 @@
     <delete id="deleteReview" parameterType="long">
         DELETE FROM REVIEWS
         WHERE REVIEW_NUM = #{reviewNum}
+    </delete>
+
+    <delete id="deleteReviewsByMemberNums" parameterType="list">
+        DELETE FROM REVIEWS
+        WHERE MEMBER_NUM IN
+        <foreach collection="list" item="memberNum" open="(" separator="," close=")">
+            #{memberNum}
+        </foreach>
     </delete>
 
       <update id="updateReview" parameterType="lappick.review.domain.Review">
@@ -129,7 +140,7 @@
             SELECT
                 R.REVIEW_NUM, R.REVIEW_RATING, R.REVIEW_CONTENT, R.REVIEW_DATE,
                 R.REVIEW_IMAGE, R.REVIEW_STATUS, R.REVIEW_MOD_DATE, G.GOODS_NAME,
-                M.MEMBER_ID
+                CASE WHEN NVL(M.MEMBER_STATUS, 'ACTIVE') = 'WITHDRAWN' THEN '탈퇴회원' ELSE M.MEMBER_ID END AS MEMBER_ID
             FROM REVIEWS R
             JOIN GOODS G ON R.GOODS_NUM = G.GOODS_NUM
             JOIN MEMBERS M ON R.MEMBER_NUM = M.MEMBER_NUM
@@ -172,7 +183,8 @@
                 SELECT
                     R.REVIEW_NUM, R.GOODS_NUM, R.MEMBER_NUM, R.PURCHASE_NUM,
                     R.REVIEW_RATING, R.REVIEW_CONTENT, R.REVIEW_IMAGE, R.REVIEW_DATE, R.REVIEW_STATUS,
-                    R.REVIEW_MOD_DATE, M.MEMBER_ID,
+                    R.REVIEW_MOD_DATE,
+                    CASE WHEN NVL(M.MEMBER_STATUS, 'ACTIVE') = 'WITHDRAWN' THEN '탈퇴회원' ELSE M.MEMBER_ID END AS MEMBER_ID,
                     G.GOODS_NAME
                 FROM REVIEWS R
                 JOIN MEMBERS M ON R.MEMBER_NUM = M.MEMBER_NUM

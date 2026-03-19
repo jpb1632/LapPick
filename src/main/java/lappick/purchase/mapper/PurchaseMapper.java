@@ -26,6 +26,8 @@ public interface PurchaseMapper {
             @Param("memberNum") String memberNum
     );
     List<PurchaseItemResponse> selectPurchasedItemsByMemberNum(String memberNum);
+    int countPurchasesByMemberNum(String memberNum);
+    List<String> selectMemberNumsWithPurchases(List<String> memberNums);
     int countDeliveredPurchaseItemByMember(
             @Param("purchaseNum") String purchaseNum,
             @Param("goodsNum") String goodsNum,

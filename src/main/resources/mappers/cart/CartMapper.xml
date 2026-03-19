@@ -51,7 +51,7 @@
     WHEN NOT MATCHED THEN	
         insert (cart_NUM
                 , MEMBER_NUM,GOODS_NUM,CART_DATE, CART_QTY)
-        values ((select COALESCE(max(cart_num ),0) + 1  from cart)
+        values (CART_NUM_SEQ.NEXTVAL
                 ,#{memberNum}, #{goodsNum}, sysdate, #{cartQty})
     </update>
     
@@ -81,4 +81,12 @@
         FROM cart 
         WHERE member_num = #{memberNum}
     </select>
+
+    <delete id="deleteCartByMemberNums" parameterType="list">
+        DELETE FROM cart
+        WHERE member_num IN
+        <foreach collection="list" item="memberNum" open="(" separator="," close=")">
+            #{memberNum}
+        </foreach>
+    </delete>
 </mapper>

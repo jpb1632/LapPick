@@ -41,6 +41,7 @@
             <h2 class="textset-tit">회원 수정</h2>
             <p class="textset-desc">회원 정보를 수정하는 페이지입니다.</p>
             <div class="alert" th:if="${message}" th:text="${message}"></div>
+            <div class="alert" th:if="${error}" th:text="${error}" style="background:#fef2f2; color:#b91c1c; border-color:#fecaca;"></div>
           </div>
 
           <form id="memberEditForm"

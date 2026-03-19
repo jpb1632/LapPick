@@ -41,6 +41,9 @@
           </div>
 
          <form id="employeeNewForm" th:action="@{/admin/employees/add}" th:object="${employeeCommand}" method="post" autocomplete="off" onsubmit="return combineJumin();">
+            <div class="alert" th:if="${#fields.hasGlobalErrors()}" style="background:#fef2f2; color:#b91c1c; border-color:#fecaca; margin-bottom:12px;">
+              <div th:each="err : ${#fields.globalErrors()}" th:text="${err}"></div>
+            </div>
             
             <input type="hidden" th:field="*{empNum}">
             <table class="write-table">
