@@ -2,12 +2,18 @@ package lappick.auth.controller;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 import lappick.auth.dto.RegisterRequest;
 import lappick.auth.mapper.AuthMapper;
@@ -51,12 +57,50 @@ public class AuthController {
     }
 
     @PostMapping("/register/write")
-    public String register(@Validated @ModelAttribute("registerRequest") RegisterRequest registerRequest, BindingResult result) {
+    public String register(@Validated @ModelAttribute("registerRequest") RegisterRequest registerRequest,
+                           BindingResult result) {
+        if (!result.hasFieldErrors("memberPwCon")
+                && registerRequest.getMemberPw() != null
+                && registerRequest.getMemberPwCon() != null
+                && !registerRequest.getMemberPw().equals(registerRequest.getMemberPwCon())) {
+            result.rejectValue("memberPwCon", "register.password.mismatch", "비밀번호 확인이 일치하지 않습니다.");
+        }
+
         if (result.hasErrors()) {
             return "user/auth/register-form";
         }
-        authService.joinMember(registerRequest);
+
+        try {
+            authService.joinMember(registerRequest);
+        } catch (IllegalArgumentException e) {
+            rejectRegistrationError(registerRequest, result, e.getMessage());
+            return "user/auth/register-form";
+        } catch (DataIntegrityViolationException e) {
+            log.warn("Registration failed due to data integrity violation. memberId={}", registerRequest.getMemberId(), e);
+            rejectRegistrationError(registerRequest, result, "회원가입 처리 중 문제가 발생했습니다. 입력 정보를 다시 확인해주세요.");
+            return "user/auth/register-form";
+        }
+
         return "redirect:/auth/register/welcome";
+    }
+
+    private void rejectRegistrationError(RegisterRequest registerRequest, BindingResult result, String defaultMessage) {
+        boolean rejected = false;
+
+        if (registerRequest.getMemberId() != null && authMapper.idCheckSelectOne(registerRequest.getMemberId()) != null) {
+            result.rejectValue("memberId", "register.duplicate.memberId", "이미 사용 중인 아이디입니다.");
+            rejected = true;
+        }
+
+        if (registerRequest.getMemberEmail() != null && authMapper.emailCheckSelectOne(registerRequest.getMemberEmail()) != null) {
+            result.rejectValue("memberEmail", "register.duplicate.memberEmail", "이미 사용 중인 이메일입니다.");
+            rejected = true;
+        }
+
+        if (!rejected) {
+            result.reject("register.failed",
+                    defaultMessage != null ? defaultMessage : "회원가입 처리 중 문제가 발생했습니다. 입력 정보를 다시 확인해주세요.");
+        }
     }
 
     @GetMapping("/register/welcome")
@@ -71,7 +115,8 @@ public class AuthController {
 
     @PostMapping("/find-id")
     public String findIdAction(@RequestParam("memberName") String memberName,
-                               @RequestParam("memberEmail") String memberEmail, Model model) {
+                               @RequestParam("memberEmail") String memberEmail,
+                               Model model) {
         String memberId = authService.findIdByNameAndEmail(memberName, memberEmail);
         model.addAttribute("memberId", memberId);
         return "user/auth/find-id-result";
@@ -84,7 +129,8 @@ public class AuthController {
 
     @PostMapping("/find-pw")
     public String findPwAction(@RequestParam("memberId") String memberId,
-                               @RequestParam("memberEmail") String memberEmail, Model model) {
+                               @RequestParam("memberEmail") String memberEmail,
+                               Model model) {
         try {
             boolean resetCompleted = authService.resetPassword(memberId, memberEmail);
             model.addAttribute("success", resetCompleted);

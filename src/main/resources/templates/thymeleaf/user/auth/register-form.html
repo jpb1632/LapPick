@@ -54,6 +54,33 @@
         padding: 0px 24px;
         height: 50px;
       }
+      .form-error {
+        margin-top: 16px;
+        padding: 12px 14px;
+        border: 1px solid #fecaca;
+        border-radius: 8px;
+        background: #fef2f2;
+        color: #b91c1c;
+      }
+      .field-error {
+        margin-top: 8px;
+        color: #b91c1c;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      .error-summary-title {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+      }
+      .error-summary-list {
+        margin: 0;
+        padding-left: 18px;
+      }
+      .input-error {
+        border-color: #ef4444 !important;
+        background-color: #fff7f7;
+      }
     </style>
   </th:block>
 </head>
@@ -71,35 +98,60 @@
           </div>
 
 <form th:action="@{/auth/register/write}" method="post" th:object="${registerRequest}">
+          <div class="form-error" th:if="${#fields.hasAnyErrors()}">
+            <strong class="error-summary-title">입력 내용을 다시 확인해주세요.</strong>
+            <ul class="error-summary-list">
+              <li th:each="err : ${#fields.errors('*')}" th:text="${err}"></li>
+            </ul>
+          </div>
           <table class="register-table">
               <tbody>
                 <tr>
                   <th><label for="memberId">아이디</label></th>
-                  <td><input type="text" th:field="*{memberId}" placeholder="아이디 (5~12자 영문, 숫자)" required></td>
+                  <td>
+                    <input type="text" th:field="*{memberId}" th:classappend="${#fields.hasErrors('memberId')} ? 'input-error'" placeholder="아이디 (5~12자 영문, 숫자)" required>
+                    <div class="field-error" th:if="${#fields.hasErrors('memberId')}" th:errors="*{memberId}"></div>
+                  </td>
                 </tr>
                 <tr>
                   <th><label for="memberPw">비밀번호</label></th>
-                  <td><input type="password" th:field="*{memberPw}" placeholder="비밀번호 (8자 이상)" required></td>
+                  <td>
+                    <input type="password" th:field="*{memberPw}" th:classappend="${#fields.hasErrors('memberPw')} ? 'input-error'" placeholder="비밀번호 (8자 이상)" required>
+                    <div class="field-error" th:if="${#fields.hasErrors('memberPw')}" th:errors="*{memberPw}"></div>
+                  </td>
                 </tr>
                 <tr>
                   <th><label for="memberPwCon">비밀번호 확인</label></th>
-                  <td><input type="password" th:field="*{memberPwCon}" placeholder="비밀번호를 다시 입력하세요" required></td>
+                  <td>
+                    <input type="password" th:field="*{memberPwCon}" th:classappend="${#fields.hasErrors('memberPwCon')} ? 'input-error'" placeholder="비밀번호를 다시 입력하세요" required>
+                    <div class="field-error" th:if="${#fields.hasErrors('memberPwCon')}" th:errors="*{memberPwCon}"></div>
+                  </td>
                 </tr>
                 <tr>
                   <th><label for="memberName">이름</label></th>
-                  <td><input type="text" th:field="*{memberName}" placeholder="이름 (예: 홍길동)" required></td>
+                  <td>
+                    <input type="text" th:field="*{memberName}" th:classappend="${#fields.hasErrors('memberName')} ? 'input-error'" placeholder="이름 (예: 홍길동)" required>
+                    <div class="field-error" th:if="${#fields.hasErrors('memberName')}" th:errors="*{memberName}"></div>
+                  </td>
                 </tr>
                 <tr>
                   <th><label for="memberEmail">이메일</label></th>
-                  <td><input type="email" th:field="*{memberEmail}" placeholder="예: user@example.com" required></td>
+                  <td>
+                    <input type="email" th:field="*{memberEmail}" th:classappend="${#fields.hasErrors('memberEmail')} ? 'input-error'" placeholder="예: user@example.com" required>
+                    <div class="field-error" th:if="${#fields.hasErrors('memberEmail')}" th:errors="*{memberEmail}"></div>
+                  </td>
                 </tr>
                 <tr>
                   <th><label for="memberPhone1">휴대폰 번호</label></th>
-                  <td><input type="text" th:field="*{memberPhone1}" 
-                             placeholder="'-' 없이 숫자 11자리 입력 (010...)" 
-                             maxlength="11" 
-                             oninput="this.value = this.value.replace(/[^0-9]/g, '');" 
-                             required></td>
+                  <td>
+                    <input type="text" th:field="*{memberPhone1}" 
+                           th:classappend="${#fields.hasErrors('memberPhone1')} ? 'input-error'"
+                           placeholder="'-' 없이 숫자 11자리 입력 (010...)" 
+                           maxlength="11" 
+                           oninput="this.value = this.value.replace(/[^0-9]/g, '');" 
+                           required>
+                    <div class="field-error" th:if="${#fields.hasErrors('memberPhone1')}" th:errors="*{memberPhone1}"></div>
+                  </td>
                 </tr>
                 <tr>
                   <th><label for="memberPhone2">추가 연락처 (선택)</label></th>
@@ -110,7 +162,10 @@
                 </tr>
                 <tr>
                   <th><label for="memberBirth">생년월일</label></th>
-                  <td><input type="date" th:field="*{memberBirth}" required></td>
+                  <td>
+                    <input type="date" th:field="*{memberBirth}" th:classappend="${#fields.hasErrors('memberBirth')} ? 'input-error'" required>
+                    <div class="field-error" th:if="${#fields.hasErrors('memberBirth')}" th:errors="*{memberBirth}"></div>
+                  </td>
                 </tr>
                 <tr>
                   <th>성별</th>
@@ -128,8 +183,9 @@
                       <input type="text" th:field="*{memberPost}" id="sample4_postcode" placeholder="우편번호" style="width: 120px; flex-grow: 0;" readonly>
                       <button type="button" onclick="execDaumPostcode();" class="btnset btnset-line" style="height: 36px; padding: 0 12px; font-size: 13px; flex-shrink: 0;">우편번호 찾기</button>
                     </div>
-                    <input type="text" th:field="*{memberAddr}" id="sample4_roadAddress" placeholder="도로명주소" readonly style="margin-top: 8px;">
+                    <input type="text" th:field="*{memberAddr}" th:classappend="${#fields.hasErrors('memberAddr')} ? 'input-error'" id="sample4_roadAddress" placeholder="도로명주소" readonly style="margin-top: 8px;">
                     <input type="text" th:field="*{memberAddrDetail}" placeholder="상세주소 입력" style="margin-top: 8px;">
+                    <div class="field-error" th:if="${#fields.hasErrors('memberAddr')}" th:errors="*{memberAddr}"></div>
                   </td>
                 </tr>
                 <tr>
