@@ -212,9 +212,10 @@
         WHERE MEMBER_NUM = #{memberNum}
     </select>
 
-    <select id="selectMemberNumsWithPurchases" parameterType="list" resultType="string">
-        SELECT DISTINCT MEMBER_NUM
+    <select id="selectMembersWithPurchases" parameterType="list" resultType="lappick.member.dto.MemberResponse">
+        SELECT DISTINCT MEMBER_NUM, MEMBER_ID
         FROM PURCHASE
+        JOIN MEMBERS USING (MEMBER_NUM)
         WHERE MEMBER_NUM IN
         <foreach collection="list" item="memberNum" open="(" separator="," close=")">
             #{memberNum}

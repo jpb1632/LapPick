@@ -6,6 +6,7 @@ import java.util.Map;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import lappick.member.dto.MemberResponse;
 import lappick.purchase.dto.DeliveryRequest;
 import lappick.purchase.dto.PurchaseItemResponse;
 import lappick.purchase.dto.PurchaseResponse;
@@ -27,7 +28,7 @@ public interface PurchaseMapper {
     );
     List<PurchaseItemResponse> selectPurchasedItemsByMemberNum(String memberNum);
     int countPurchasesByMemberNum(String memberNum);
-    List<String> selectMemberNumsWithPurchases(List<String> memberNums);
+    List<MemberResponse> selectMembersWithPurchases(List<String> memberNums);
     int countDeliveredPurchaseItemByMember(
             @Param("purchaseNum") String purchaseNum,
             @Param("goodsNum") String goodsNum,

@@ -72,11 +72,6 @@
           AND NVL(MEMBER_STATUS, 'ACTIVE') = 'ACTIVE'
     </update>
 
-    <delete id="deleteMemberById" parameterType="string">
-        DELETE FROM members
-        WHERE member_id = #{memberId}
-    </delete>
-
     <update id="softWithdrawMember">
         UPDATE members
         SET

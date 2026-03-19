@@ -67,8 +67,9 @@
                       <input type="password" id="jumin2" maxlength="7" placeholder="뒤 7자리" style="flex-grow: 1;" oninput="this.value = this.value.replace(/[^0-9]/g, '');">
                     </div>
                     <input type="hidden" th:field="*{empJumin}" />
-                    <div class="hint" th:if="${maskedJumin != null and !#strings.isEmpty(maskedJumin)}">
-                      현재 저장값: <span th:text="${maskedJumin}"></span> / 변경할 때만 다시 입력하세요.
+                    <input type="hidden" th:field="*{maskedEmpJumin}" />
+                    <div class="hint" th:if="*{maskedEmpJumin != null and !#strings.isEmpty(maskedEmpJumin)}">
+                      현재 저장값: <span th:text="*{maskedEmpJumin}"></span> / 변경할 때만 다시 입력하세요.
                     </div>
                     <div th:if="${#fields.hasErrors('empJumin')}" th:errors="*{empJumin}" class="hint" style="color:red;"></div>
                   </td>

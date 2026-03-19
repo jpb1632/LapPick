@@ -39,6 +39,8 @@ public class EmployeeUpdateRequest {
     @NotEmpty(message = "주민번호를 입력하여 주세요.", groups = ValidationGroups.Create.class)
     String empJumin;
 
+    String maskedEmpJumin;
+
     @NotNull(message = "입사일을 입력하여 주세요.", groups = {ValidationGroups.Create.class, ValidationGroups.Update.class})
     @DateTimeFormat(pattern = "yyyy-MM-dd")
     Date empHireDate;

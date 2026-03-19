@@ -31,12 +31,11 @@ public class EmployeeMyPageController {
     @GetMapping("/edit")
     public String editForm(Model model, Principal principal) {
         EmployeeResponse dto = employeeMyPageService.getEmployeeInfo(principal.getName());
-        String maskedJumin = dto.getEmpJumin();
+        dto.setMaskedEmpJumin(dto.getEmpJumin());
         dto.setEmpJumin("");
         
         // 뷰에서 '관리자' 컨텍스트와 구분하기 위해 '마이페이지'임을 전달 (폼 재활용)
         model.addAttribute("isAdminContext", false); 
-        model.addAttribute("maskedJumin", maskedJumin);
         
         model.addAttribute("employeeCommand", dto);
         return "admin/employee/employee-edit";

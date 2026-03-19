@@ -119,9 +119,9 @@ public class AdminMemberService {
             throw new IllegalArgumentException("삭제할 회원을 선택해주세요.");
         }
 
-        List<String> blockedMemberNums = purchaseMapper.selectMemberNumsWithPurchases(targetMemberNums);
-        if (!blockedMemberNums.isEmpty()) {
-            throw new IllegalStateException(buildDeleteBlockedMessage(blockedMemberNums));
+        List<MemberResponse> blockedMembers = purchaseMapper.selectMembersWithPurchases(targetMemberNums);
+        if (!blockedMembers.isEmpty()) {
+            throw new IllegalStateException(buildDeleteBlockedMessage(blockedMembers));
         }
 
         cartMapper.deleteCartByMemberNums(targetMemberNums);
@@ -145,22 +145,16 @@ public class AdminMemberService {
         }
     }
 
-    private String buildDeleteBlockedMessage(List<String> blockedMemberNums) {
-        String blockedMembers = blockedMemberNums.stream()
+    private String buildDeleteBlockedMessage(List<MemberResponse> blockedMembers) {
+        String blockedMembersMessage = blockedMembers.stream()
                 .limit(3)
-                .map(memberNum -> {
-                    MemberResponse member = memberMapper.memberSelectOneByNum(memberNum);
-                    if (member == null) {
-                        return memberNum;
-                    }
-                    return member.getMemberId() + "(" + memberNum + ")";
-                })
+                .map(member -> member.getMemberId() + "(" + member.getMemberNum() + ")")
                 .collect(Collectors.joining(", "));
 
-        if (blockedMemberNums.size() > 3) {
-            blockedMembers += " 외 " + (blockedMemberNums.size() - 3) + "명";
+        if (blockedMembers.size() > 3) {
+            blockedMembersMessage += " 외 " + (blockedMembers.size() - 3) + "명";
         }
 
-        return "주문 이력이 있는 회원은 삭제할 수 없습니다. " + blockedMembers;
+        return "주문 이력이 있는 회원은 삭제할 수 없습니다. " + blockedMembersMessage;
     }
 }

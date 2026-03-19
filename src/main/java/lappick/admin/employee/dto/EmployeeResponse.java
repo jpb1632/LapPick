@@ -21,5 +21,6 @@ public class EmployeeResponse {
     @DateTimeFormat(pattern = "yyyy-MM-dd")
     Date empHireDate;
     String empJumin;
+    String maskedEmpJumin;
     String empImage;
 }

@@ -23,7 +23,6 @@ public interface MemberMapper {
     // Member my-page
     MemberResponse selectMemberById(String memberId);
     void memberUpdate(MemberResponse dto);
-    void deleteMemberById(String memberId);
     int softWithdrawMember(@Param("memberId") String memberId, @Param("withdrawnMemberId") String withdrawnMemberId);
 
     // Common use
