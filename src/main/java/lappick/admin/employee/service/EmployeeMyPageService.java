@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import lappick.admin.employee.dto.EmployeeResponse;
 import lappick.admin.employee.mapper.EmployeeMapper;
+import lappick.common.util.SensitiveDataMasker;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -17,7 +18,11 @@ public class EmployeeMyPageService {
 
     @Transactional(readOnly = true)
     public EmployeeResponse getEmployeeInfo(String empId) {
-        return employeeMapper.selectByEmpId(empId);
+        EmployeeResponse employee = employeeMapper.selectByEmpId(empId);
+        if (employee != null) {
+            employee.setEmpJumin(SensitiveDataMasker.maskJuminForDisplay(employee.getEmpJumin()));
+        }
+        return employee;
     }
     
     public void changePassword(String empId, String oldPw, String newPw) {
@@ -35,7 +40,9 @@ public class EmployeeMyPageService {
 
         // 2. 폼에서 넘어온 수정된 값들을 기존 정보(existingInfo)에 덮어씁니다.
         existingInfo.setEmpName(updatedInfo.getEmpName());
-        existingInfo.setEmpJumin(updatedInfo.getEmpJumin());
+        if (updatedInfo.getEmpJumin() != null && !updatedInfo.getEmpJumin().isBlank()) {
+            existingInfo.setEmpJumin(SensitiveDataMasker.maskJuminForStorage(updatedInfo.getEmpJumin()));
+        }
         existingInfo.setEmpPhone(updatedInfo.getEmpPhone());
         existingInfo.setEmpEmail(updatedInfo.getEmpEmail());
         existingInfo.setEmpAddr(updatedInfo.getEmpAddr());

@@ -62,11 +62,15 @@
                   <th>주민번호</th>
                   <td>
                     <div style="display: flex; align-items: center; gap: 5px;">
-                      <input type="text" id="jumin1" maxlength="6" placeholder="앞 6자리" style="width: 180px;" required>
+                      <input type="text" id="jumin1" maxlength="6" placeholder="앞 6자리" style="width: 180px;" oninput="this.value = this.value.replace(/[^0-9]/g, '');">
                       <span>-</span>
-                      <input type="password" id="jumin2" maxlength="7" placeholder="뒤 7자리" style="flex-grow: 1;" required>
+                      <input type="password" id="jumin2" maxlength="7" placeholder="뒤 7자리" style="flex-grow: 1;" oninput="this.value = this.value.replace(/[^0-9]/g, '');">
                     </div>
                     <input type="hidden" th:field="*{empJumin}" />
+                    <div class="hint" th:if="${maskedJumin != null and !#strings.isEmpty(maskedJumin)}">
+                      현재 저장값: <span th:text="${maskedJumin}"></span> / 변경할 때만 다시 입력하세요.
+                    </div>
+                    <div th:if="${#fields.hasErrors('empJumin')}" th:errors="*{empJumin}" class="hint" style="color:red;"></div>
                   </td>
                 </tr>
                 <tr>
@@ -123,19 +127,19 @@
 <script th:inline="javascript">
   /*<![CDATA[*/
   $(function() {
-    // 페이지 로딩 시: DB에 저장된 주민번호(xxx-xxx)를 폼 필드(jumin1, jumin2)에 분리하여 표시합니다.
-    const juminValue = /*[[${employeeCommand.empJumin}]]*/ null;
-    if (juminValue && juminValue.includes('-')) {
-      const parts = juminValue.split('-');
-      $('#jumin1').val(parts[0]);
-      $('#jumin2').val(parts[1]);
-    }
-
-    // 폼 제출 시: 분리된 주민번호(jumin1, jumin2)를 합쳐서 숨겨진 empJumin 필드에 저장합니다.
     $('#employeeEditForm').on('submit', function() {
       const jumin1 = $('#jumin1').val();
       const jumin2 = $('#jumin2').val();
+      if (!jumin1 && !jumin2) {
+        $('input[name="empJumin"]').val('');
+        return true;
+      }
+      if (jumin1.length !== 6 || jumin2.length !== 7) {
+        alert('주민번호를 모두 입력해 주세요.');
+        return false;
+      }
       $('input[name="empJumin"]').val(jumin1 + '-' + jumin2);
+      return true;
     });
   });
   

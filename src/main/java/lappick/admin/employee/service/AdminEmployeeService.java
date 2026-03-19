@@ -12,6 +12,7 @@ import lappick.admin.employee.dto.EmployeeResponse;
 import lappick.admin.employee.dto.EmployeeUpdateRequest;
 import lappick.admin.employee.mapper.EmployeeMapper;
 import lappick.auth.mapper.AuthMapper;
+import lappick.common.util.SensitiveDataMasker;
 import lappick.common.dto.StartEndPageDTO;
 import lombok.RequiredArgsConstructor;
 
@@ -52,7 +53,11 @@ public class AdminEmployeeService {
 
     @Transactional(readOnly = true)
     public EmployeeResponse getEmployeeDetail(String empNum) {
-        return employeeMapper.selectByEmpNum(empNum);
+        EmployeeResponse employee = employeeMapper.selectByEmpNum(empNum);
+        if (employee != null) {
+            employee.setEmpJumin(SensitiveDataMasker.maskJuminForDisplay(employee.getEmpJumin()));
+        }
+        return employee;
     }
 
     public void createEmployee(EmployeeUpdateRequest command) {
@@ -63,7 +68,7 @@ public class AdminEmployeeService {
         dto.setEmpId(command.getEmpId());
         dto.setEmpPw(passwordEncoder.encode(command.getEmpPw()));
         dto.setEmpName(command.getEmpName());
-        dto.setEmpJumin(command.getEmpJumin());
+        dto.setEmpJumin(SensitiveDataMasker.maskJuminForStorage(command.getEmpJumin()));
         dto.setEmpPhone(command.getEmpPhone());
         dto.setEmpEmail(command.getEmpEmail());
         dto.setEmpAddr(command.getEmpAddr());
@@ -83,7 +88,9 @@ public class AdminEmployeeService {
         validateChangedEmail(existingInfo.getEmpEmail(), command.getEmpEmail());
 
         existingInfo.setEmpName(command.getEmpName());
-        existingInfo.setEmpJumin(command.getEmpJumin());
+        if (command.getEmpJumin() != null && !command.getEmpJumin().isBlank()) {
+            existingInfo.setEmpJumin(SensitiveDataMasker.maskJuminForStorage(command.getEmpJumin()));
+        }
         existingInfo.setEmpPhone(command.getEmpPhone());
         existingInfo.setEmpEmail(command.getEmpEmail());
         existingInfo.setEmpAddr(command.getEmpAddr());

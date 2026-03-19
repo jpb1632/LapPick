@@ -18,6 +18,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import lappick.cart.domain.Cart;
 import lappick.cart.dto.CartItemResponse;
 import lappick.cart.mapper.CartMapper;
+import lappick.common.util.SensitiveDataMasker;
 import lappick.goods.dto.GoodsResponse;
 import lappick.goods.mapper.GoodsMapper;
 import lappick.member.dto.MemberResponse;
@@ -162,6 +163,7 @@ public class PurchaseController {
             ra.addFlashAttribute("error", "조회 권한이 없는 주문입니다.");
             return "redirect:/purchases/my-orders";
         }
+        order.setCardNumber(SensitiveDataMasker.maskCardNumberForDisplay(order.getCardNumber()));
         model.addAttribute("order", order);
         return "user/purchase/order-detail";
     }
@@ -194,6 +196,7 @@ public class PurchaseController {
     @PreAuthorize("hasAuthority('ROLE_EMPLOYEE')")
     public String empOrderDetail(@PathVariable("purchaseNum") String purchaseNum, Model model) {
         PurchaseResponse order = purchaseService.getOrderDetail(purchaseNum);
+        order.setCardNumber(SensitiveDataMasker.maskCardNumberForDisplay(order.getCardNumber()));
         model.addAttribute("order", order);
         return "admin/purchase/order-detail";
     }

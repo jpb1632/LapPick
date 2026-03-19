@@ -85,9 +85,9 @@
                   <th>주민번호</th>
                   <td>
                     <div style="display: flex; align-items: center; gap: 5px;">
-                      <input type="text" id="jumin1" maxlength="6" placeholder="앞 6자리" style="width: 180px;">
+                      <input type="text" id="jumin1" maxlength="6" placeholder="앞 6자리" style="width: 180px;" oninput="this.value = this.value.replace(/[^0-9]/g, '');">
                       <span>-</span>
-                      <input type="password" id="jumin2" maxlength="7" placeholder="뒤 7자리" style="flex-grow: 1;">
+                      <input type="password" id="jumin2" maxlength="7" placeholder="뒤 7자리" style="flex-grow: 1;" oninput="this.value = this.value.replace(/[^0-9]/g, '');">
                     </div>
                     
                     <input type="hidden" th:field="*{empJumin}" />
@@ -146,10 +146,14 @@
 
 <th:block layout:fragment="script">
    <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
-   <script>
+  <script>
     function combineJumin() {
       const jumin1 = document.getElementById('jumin1').value;
       const jumin2 = document.getElementById('jumin2').value;
+      if (jumin1.length !== 6 || jumin2.length !== 7) {
+        alert('주민번호를 모두 입력해 주세요.');
+        return false;
+      }
       const empJuminInput = document.getElementById('empJumin');
       empJuminInput.value = jumin1 + '-' + jumin2;
       return true;

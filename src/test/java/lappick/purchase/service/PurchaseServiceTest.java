@@ -83,6 +83,7 @@ class PurchaseServiceTest {
 
         assertThat(savedPurchase.getPurchaseTotal()).isEqualTo(4_500_000);
         assertThat(savedPurchase.getPaymentMethod()).isEqualTo("신용카드");
+        assertThat(savedPurchase.getCardNumber()).isEqualTo("************1234");
         assertThat(savedItem.getGoodsNum()).isEqualTo("GOODS-1");
         assertThat(savedItem.getPurchaseQty()).isEqualTo(3);
         assertThat(savedItem.getPurchasePrice()).isEqualTo(1_500_000);
@@ -110,12 +111,12 @@ class PurchaseServiceTest {
 
     private PurchaseRequest buildCardOrderRequest() {
         PurchaseRequest request = new PurchaseRequest();
-        request.setReceiverName("홍길동");
+        request.setReceiverName("김테스터");
         request.setReceiverPhone("01012345678");
         request.setPurchasePost("12345");
-        request.setPurchaseAddr("서울시 강남구");
-        request.setPurchaseAddrDetail("101호");
-        request.setPurchaseMsg("문 앞에 놔주세요");
+        request.setPurchaseAddr("서울 강남구");
+        request.setPurchaseAddrDetail("101동");
+        request.setPurchaseMsg("문 앞에 놓아주세요");
         request.setPaymentMethod("신용카드");
         request.setCardCompany("신한카드");
         request.setCardNumber("1234123412341234");

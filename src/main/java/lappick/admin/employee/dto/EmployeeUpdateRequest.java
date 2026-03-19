@@ -36,7 +36,7 @@ public class EmployeeUpdateRequest {
     @NotEmpty(message = "이메일을 입력하여 주세요.", groups = {ValidationGroups.Create.class, ValidationGroups.Update.class})
     String empEmail;
 
-    @NotEmpty(message = "주민번호를 입력하여 주세요.", groups = {ValidationGroups.Create.class, ValidationGroups.Update.class})
+    @NotEmpty(message = "주민번호를 입력하여 주세요.", groups = ValidationGroups.Create.class)
     String empJumin;
 
     @NotNull(message = "입사일을 입력하여 주세요.", groups = {ValidationGroups.Create.class, ValidationGroups.Update.class})

@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import lappick.cart.mapper.CartMapper;
+import lappick.common.util.SensitiveDataMasker;
 import lappick.goods.dto.GoodsStockResponse;
 import lappick.goods.mapper.GoodsMapper;
 import lappick.goods.service.GoodsService;
@@ -243,7 +244,9 @@ public class PurchaseService {
 
     @Transactional(readOnly = true)
     public PurchaseResponse getOrderDetail(String purchaseNum) {
-        return purchaseMapper.selectPurchaseDetail(purchaseNum);
+        PurchaseResponse purchase = purchaseMapper.selectPurchaseDetail(purchaseNum);
+        maskSensitivePaymentInfo(purchase);
+        return purchase;
     }
 
     @Transactional(readOnly = true)
@@ -312,7 +315,9 @@ public class PurchaseService {
 
         if (PAYMENT_METHOD_CARD.equals(command.getPaymentMethod())) {
             command.setCardCompany(requireText(command.getCardCompany(), "카드사를 선택해주세요."));
-            command.setCardNumber(requireText(command.getCardNumber(), "카드번호를 입력해주세요."));
+            command.setCardNumber(SensitiveDataMasker.maskCardNumberForStorage(
+                    requireText(command.getCardNumber(), "카드번호를 입력해주세요.")
+            ));
             command.setBankName(null);
             command.setDepositorName(null);
             return;
@@ -442,6 +447,19 @@ public class PurchaseService {
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException(message, e);
         }
+    }
+
+    private void maskSensitivePaymentInfo(PurchaseResponse purchase) {
+        if (purchase == null) {
+            return;
+        }
+
+        if (PAYMENT_METHOD_CARD.equals(purchase.getPaymentMethod())) {
+            purchase.setCardNumber(SensitiveDataMasker.maskCardNumberForDisplay(purchase.getCardNumber()));
+            return;
+        }
+
+        purchase.setCardNumber(null);
     }
 
     private record ValidatedPurchaseItem(String goodsNum, String goodsName, int quantity, int unitPrice) {

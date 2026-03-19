@@ -96,8 +96,10 @@ public class AdminEmployeeController {
         EmployeeResponse responseDto = adminEmployeeService.getEmployeeDetail(empNum);
         EmployeeUpdateRequest requestDto = new EmployeeUpdateRequest();
         BeanUtils.copyProperties(responseDto, requestDto);
+        requestDto.setEmpJumin("");
 
         model.addAttribute("isAdminContext", true);
+        model.addAttribute("maskedJumin", responseDto.getEmpJumin());
         model.addAttribute("employeeCommand", requestDto);
         return "admin/employee/employee-edit";
     }
