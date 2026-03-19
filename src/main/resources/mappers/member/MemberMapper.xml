@@ -16,9 +16,10 @@
             SELECT ROW_NUMBER() OVER (ORDER BY member_regist DESC) AS rn, <include refid="memberColumns" />
             FROM members
             <where>
+                NVL(MEMBER_STATUS, 'ACTIVE') = 'ACTIVE'
                 <if test="searchWord != null and searchWord != ''">
-                    (LOWER(MEMBER_NAME) LIKE '%' || LOWER(#{searchWord}) || '%' OR LOWER(MEMBER_ID) LIKE '%' || LOWER(#{searchWord}) || '%')
-                    </if>
+                    AND (LOWER(MEMBER_NAME) LIKE '%' || LOWER(#{searchWord}) || '%' OR LOWER(MEMBER_ID) LIKE '%' || LOWER(#{searchWord}) || '%')
+                </if>
             </where>
         )
         WHERE rn BETWEEN #{startRow} AND #{endRow}
@@ -27,9 +28,10 @@
     <select id="memberCountBySearch" resultType="int">
         SELECT COUNT(*) FROM members
         <where>
+            NVL(MEMBER_STATUS, 'ACTIVE') = 'ACTIVE'
             <if test="searchWord != null and searchWord != ''">
-                (LOWER(MEMBER_NAME) LIKE '%' || LOWER(#{searchWord}) || '%' OR LOWER(MEMBER_ID) LIKE '%' || LOWER(#{searchWord}) || '%')
-                </if>
+                AND (LOWER(MEMBER_NAME) LIKE '%' || LOWER(#{searchWord}) || '%' OR LOWER(MEMBER_ID) LIKE '%' || LOWER(#{searchWord}) || '%')
+            </if>
         </where>
     </select>
 
@@ -38,7 +40,7 @@
         FROM members
         WHERE member_num = #{memberNum}
     </select>
-    
+
     <delete id="memberDelete" parameterType="list">
         DELETE FROM members
         WHERE member_num IN
@@ -51,9 +53,10 @@
         SELECT <include refid="memberColumns" />
         FROM members
         WHERE member_id = #{memberId}
+          AND NVL(member_status, 'ACTIVE') = 'ACTIVE'
     </select>
-    
-   <update id="memberUpdate" parameterType="lappick.member.dto.MemberResponse">
+
+    <update id="memberUpdate" parameterType="lappick.member.dto.MemberResponse">
         UPDATE members
         SET
             MEMBER_NAME        = #{memberName},
@@ -64,21 +67,47 @@
             MEMBER_PHONE2      = #{memberPhone2, jdbcType=VARCHAR},
             MEMBER_EMAIL       = #{memberEmail},
             MEMBER_BIRTH       = #{memberBirth},
-            GENDER             = #{gender} WHERE MEMBER_ID        = #{memberId}
+            GENDER             = #{gender}
+        WHERE MEMBER_ID = #{memberId}
+          AND NVL(MEMBER_STATUS, 'ACTIVE') = 'ACTIVE'
     </update>
 
     <delete id="deleteMemberById" parameterType="string">
-        DELETE FROM members 
+        DELETE FROM members
         WHERE member_id = #{memberId}
     </delete>
-    
+
+    <update id="softWithdrawMember">
+        UPDATE members
+        SET
+            member_status = 'WITHDRAWN',
+            member_withdrawn_at = SYSTIMESTAMP,
+            member_name = '탈퇴회원',
+            member_id = #{withdrawnMemberId},
+            member_addr = NULL,
+            member_addr_detail = NULL,
+            member_post = NULL,
+            gender = NULL,
+            member_phone1 = NULL,
+            member_phone2 = NULL,
+            member_email = NULL,
+            member_birth = NULL,
+            member_email_conf = 'N'
+        WHERE member_id = #{memberId}
+          AND NVL(member_status, 'ACTIVE') = 'ACTIVE'
+    </update>
+
     <select id="memberNumSelect" parameterType="string" resultType="string">
-        SELECT member_num FROM members WHERE member_id = #{memberId}
+        SELECT member_num
+        FROM members
+        WHERE member_id = #{memberId}
+          AND NVL(member_status, 'ACTIVE') = 'ACTIVE'
     </select>
 
     <select id="selectOneById" parameterType="string" resultType="lappick.member.dto.MemberResponse">
         SELECT <include refid="memberColumns" />
         FROM MEMBERS
         WHERE MEMBER_ID = #{memberId}
+          AND NVL(MEMBER_STATUS, 'ACTIVE') = 'ACTIVE'
     </select>
 </mapper>

@@ -11,7 +11,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lappick.member.dto.MemberResponse;
 import lappick.member.dto.MemberUpdateRequest;
 import lappick.member.mapper.MemberMapper;
@@ -97,14 +100,18 @@ public class MyPageController {
     @PreAuthorize("hasAuthority('ROLE_MEMBER')")
     @PostMapping("/withdraw")
     public String withdraw(@RequestParam("memberPw") String rawPassword,
-                             RedirectAttributes ra) {
+                           RedirectAttributes ra,
+                           HttpServletRequest request,
+                           HttpServletResponse response,
+                           Authentication authentication) {
         String memberId = getCurrentUserId();
         try {
             memberService.withdrawMember(memberId, rawPassword);
+
+            new SecurityContextLogoutHandler().logout(request, response, authentication);
+            return "redirect:/?message=withdrawSuccess";
             
-            return "redirect:/auth/logout?withdraw=success";
-            
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             ra.addFlashAttribute("error", e.getMessage());
             return "redirect:/member/my-page";
         }
