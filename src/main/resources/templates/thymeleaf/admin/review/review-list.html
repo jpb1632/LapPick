@@ -184,14 +184,18 @@
                                         <td th:text="${'⭐'.repeat(review.reviewRating)}"></td>
                                         <td th:text="${#dates.format(review.reviewDate, 'yyyy-MM-dd')}"></td>
                                         <td class="manage-btn-group">
-    <a th:href="@{/admin/reviews/toggle-status/{num}(num=${review.reviewNum}, currentStatus=${review.reviewStatus})}"
-       th:text="${review.reviewStatus == 'PUBLISHED' ? '숨김' : '게시'}"
-       th:classappend="${review.reviewStatus == 'PUBLISHED' ? 'btn-hide' : 'btn-publish'}"
-       th:data-action-text="${review.reviewStatus == 'PUBLISHED' ? '숨김' : '게시'}"
-       onclick="return confirmToggle(event, this);"></a>
-    <a th:href="@{/admin/reviews/delete/{num}(num=${review.reviewNum})}" class="btn-delete"
-       onclick="event.stopPropagation(); return confirm('정말로 이 리뷰를 삭제하시겠습니까?');">삭제</a>
-</td>
+                                            <button type="button"
+                                                    th:text="${review.reviewStatus == 'PUBLISHED' ? '숨김' : '게시'}"
+                                                    th:classappend="${review.reviewStatus == 'PUBLISHED' ? 'btn-hide' : 'btn-publish'}"
+                                                    th:data-action-text="${review.reviewStatus == 'PUBLISHED' ? '숨김' : '게시'}"
+                                                    th:data-action-url="@{/admin/reviews/toggle-status/{num}(num=${review.reviewNum})}"
+                                                    th:data-current-status="${review.reviewStatus}"
+                                                    onclick="return confirmToggle(event, this);"></button>
+                                            <button type="button"
+                                                    class="btn-delete"
+                                                    th:data-action-url="@{/admin/reviews/delete/{num}(num=${review.reviewNum})}"
+                                                    onclick="event.stopPropagation(); submitReviewAction(this.dataset.actionUrl, null, '정말로 이 리뷰를 삭제하시겠습니까?');">삭제</button>
+                                        </td>
                                     </tr>
                                     <tr class="review-content-row" th:id="'review-content-' + ${review.reviewNum}">
                                         <td colspan="9" class="review-content-cell">
@@ -258,16 +262,15 @@
                 // 이미 열려있는 항목이 있을 경우
                 if (alreadyOpenContent.is(targetContent)) {
                     // 내가 클릭한 항목이 이미 열려있었다면 닫습니다.
-                    targetContent.slideUp(150);
+                    targetContent.hide();
                 } else {
                     // 다른 항목이 열려있었다면, 그것을 닫고 새 항목을 엽니다.
-                    alreadyOpenContent.slideUp(150, function() {
-                        targetContent.slideDown(150);
-                    });
+                    alreadyOpenContent.hide();
+                    targetContent.css('display', 'table-row');
                 }
             } else {
                 // 아무것도 열려있지 않으면 클릭한 항목을 엽니다.
-                targetContent.slideDown(150);
+                targetContent.css('display', 'table-row');
             }
         });
 
@@ -292,7 +295,42 @@
     function confirmToggle(event, element) {
         event.stopPropagation();
         const actionText = element.getAttribute('data-action-text');
-        return confirm(`정말로 이 리뷰를 '${actionText}' 처리하시겠습니까?`);
+        if (!confirm(`정말로 이 리뷰를 '${actionText}' 처리하시겠습니까?`)) {
+            return false;
+        }
+
+        submitReviewAction(
+            element.dataset.actionUrl,
+            { currentStatus: element.dataset.currentStatus }
+        );
+        return false;
+    }
+
+    function submitReviewAction(url, extraFields, message) {
+        if (message && !confirm(message)) {
+            return;
+        }
+
+        const form = document.createElement('form');
+        form.method = 'post';
+        form.action = url;
+
+        if (extraFields) {
+            Object.entries(extraFields).forEach(([name, value]) => {
+                const hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = name;
+                hidden.value = value;
+                form.appendChild(hidden);
+            });
+        }
+
+        if (typeof window.appendCsrfHiddenInput === 'function') {
+            window.appendCsrfHiddenInput(form);
+        }
+
+        document.body.appendChild(form);
+        form.submit();
     }
     
     // --- 이미지 확대(라이트박스) 스크립트 ---

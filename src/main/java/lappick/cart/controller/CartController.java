@@ -42,12 +42,12 @@ public class CartController {
         return "200";
     }
 
-    @GetMapping("/cartQtyDown")
+    @PostMapping("/cartQtyDown")
     @ResponseBody
-    public void cartQtyDown(@RequestParam("goodsNum") String goodsNum, Principal principal) {
-        if (principal != null) {
-            cartService.decreaseItemQuantity(principal.getName(), goodsNum);
-        }
+    public String cartQtyDown(@RequestParam("goodsNum") String goodsNum, Principal principal) {
+        if (principal == null) return "000";
+        cartService.decreaseItemQuantity(principal.getName(), goodsNum);
+        return "200";
     }
 
     @PostMapping("/cartDels")
@@ -66,7 +66,7 @@ public class CartController {
         return "200";
     }
 
-    @GetMapping("/cartDel")
+    @PostMapping("/cartDel")
     public String cartDel(@RequestParam("goodsNums") String goodsNums, Principal principal) {
         if (principal != null) {
             cartService.removeItemsFromCart(principal.getName(), new String[]{goodsNums});

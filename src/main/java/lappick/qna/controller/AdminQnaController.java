@@ -107,7 +107,7 @@ public class AdminQnaController {
         }
     }
     
-    @GetMapping("/delete/{qnaNum}")
+    @PostMapping("/delete/{qnaNum}")
     public String deleteSingleQna(@PathVariable("qnaNum") Integer qnaNum, 
                                   @RequestParam(value = "returnUrl", defaultValue = "/admin/qna") String returnUrl,
                                   RedirectAttributes ra) {

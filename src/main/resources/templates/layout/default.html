@@ -6,6 +6,8 @@
     <meta http-equiv="imagetoolbar" content="no">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="format-detection" content="telephone=no">
+    <meta th:if="${_csrf != null}" name="_csrf" th:content="${_csrf.token}">
+    <meta th:if="${_csrf != null}" name="_csrf_header" th:content="${_csrf.headerName}">
     <meta name="title" content="웹사이트">
     <meta name="description" content="웹사이트입니다.">
     <meta name="keywords" content="키워드,키워드,키워드">
@@ -78,6 +80,36 @@
         }
 
         $(document).ready(function() {
+            const csrfTokenMeta = document.querySelector('meta[name="_csrf"]');
+            const csrfHeaderMeta = document.querySelector('meta[name="_csrf_header"]');
+
+            window.appendCsrfHiddenInput = function(form) {
+                if (!form || !csrfTokenMeta || !csrfHeaderMeta) {
+                    return;
+                }
+
+                if (form.querySelector('input[name="_csrf"]')) {
+                    return;
+                }
+
+                const hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = '_csrf';
+                hidden.value = csrfTokenMeta.content;
+                form.appendChild(hidden);
+            };
+
+            if (csrfTokenMeta && csrfHeaderMeta) {
+                $(document).ajaxSend(function(event, xhr, settings) {
+                    const method = (settings.type || 'GET').toUpperCase();
+                    if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS' || method === 'TRACE') {
+                        return;
+                    }
+
+                    xhr.setRequestHeader(csrfHeaderMeta.content, csrfTokenMeta.content);
+                });
+            }
+
             const isLoggedIn = /*[[${#authentication.principal != 'anonymousUser'}]]*/ false;
             if (isLoggedIn) {
                 setTimeout(function() {

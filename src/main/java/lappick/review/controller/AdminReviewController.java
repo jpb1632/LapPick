@@ -88,7 +88,7 @@ public class AdminReviewController {
         return "redirect:/admin/reviews";
     }
 
-    @GetMapping("/toggle-status/{reviewNum}")
+    @PostMapping("/toggle-status/{reviewNum}")
     public String toggleStatus(@PathVariable("reviewNum") Long reviewNum,
                                @RequestParam("currentStatus") String currentStatus, RedirectAttributes ra) {
         try {
@@ -102,7 +102,7 @@ public class AdminReviewController {
         return "redirect:/admin/reviews";
     }
 
-    @GetMapping("/delete/{reviewNum}")
+    @PostMapping("/delete/{reviewNum}")
     public String deleteReview(@PathVariable("reviewNum") Long reviewNum, RedirectAttributes ra) {
         try {
             reviewService.deleteReviewsByAdmin(Collections.singletonList(reviewNum));

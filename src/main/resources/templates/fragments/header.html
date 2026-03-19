@@ -20,8 +20,17 @@
               <li class="header-gnbitem"><a class="header-gnblink" href="/banner/notice"><span>NOTICE</span></a></li>
               <li class="header-gnbitem"><a class="header-gnblink" href="/banner/faq"><span>FAQ</span></a></li>
               <li class="header-gnbitem">
-                <a class="header-gnblink" th:href="${isLoggedIn} ? @{/auth/logout} : @{/auth/login}">
-                  <span th:text="${isLoggedIn} ? 'LOGOUT' : 'LOGIN'" th:style="${isLoggedIn} ? 'color: red;' : ''">LOGIN</span>
+                <th:block th:if="${isLoggedIn}">
+                  <form th:action="@{/auth/logout}" method="post" style="display:inline-block; margin:0;">
+                    <button type="submit"
+                            class="header-gnblink"
+                            style="background:none; border:none; margin:0; font:inherit; font-weight:600; color:inherit; cursor:pointer;">
+                      <span style="color: red;">LOGOUT</span>
+                    </button>
+                  </form>
+                </th:block>
+                <a th:unless="${isLoggedIn}" class="header-gnblink" th:href="@{/auth/login}">
+                  <span>LOGIN</span>
                 </a>
               </li>
             </ul>

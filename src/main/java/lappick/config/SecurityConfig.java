@@ -20,6 +20,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.rememberme.JdbcTokenRepositoryImpl;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -35,7 +36,9 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable())
+            .csrf(csrf -> csrf
+                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+            )
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
                     PathRequest.toStaticResources().atCommonLocations() 
@@ -117,19 +120,7 @@ public class SecurityConfig {
             @Override
             public void onLogoutSuccess(HttpServletRequest request, HttpServletResponse response,
                                         Authentication authentication) throws IOException {
-                
-                String targetUrl = "/"; // 기본 리다이렉트 URL
-                
-                // 1. /auth/logout?withdraw=success 파라미터가 있는지 확인
-                String withdrawParam = request.getParameter("withdraw");
-                if ("success".equals(withdrawParam)) {
-                    // 2. 메인 페이지로 보낼 파라미터 추가
-                    targetUrl = "/?message=withdrawSuccess";
-                }
-                
-                // 3. 최종 목적지로 리다이렉트
-                // (세션과 쿠키는 이미 .invalidateHttpSession(true)와 .deleteCookies()에 의해 처리됨)
-                response.sendRedirect(request.getContextPath() + targetUrl);
+                response.sendRedirect(request.getContextPath() + "/");
             }
         };
     }

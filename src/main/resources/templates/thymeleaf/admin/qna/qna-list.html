@@ -164,9 +164,15 @@
                                     <td th:text="${qna.memberId}"></td>
                                     <td th:text="${#temporals.format(qna.qnaDate, 'yyyy-MM-dd')}"></td>
                                     <td>
-                                        <a th:href="@{/admin/qna/delete/{num}(num=${qna.qnaNum}, returnUrl=${currentUrl})}" 
-                                           class="manage-btn"
-                                           onclick="event.stopPropagation(); return confirm('이 문의를 삭제하시겠습니까?');">삭제</a>
+                                        <form th:action="@{/admin/qna/delete/{num}(num=${qna.qnaNum})}"
+                                              method="post"
+                                              style="display:inline-block;"
+                                              onclick="event.stopPropagation();">
+                                            <input type="hidden" name="returnUrl" th:value="${currentUrl}" />
+                                            <button type="submit"
+                                                    class="manage-btn"
+                                                    onclick="return confirm('이 문의를 삭제하시겠습니까?');">삭제</button>
+                                        </form>
                                     </td>
                                 </tr>
                                 <tr class="qna-content-row" th:id="'qna-content-' + ${qna.qnaNum}">
@@ -242,14 +248,13 @@
             const openContent = $('.qna-content-row:visible');
             if (openContent.length > 0) {
                 if (openContent.is(targetContent)) {
-                    targetContent.slideUp(120);
+                    targetContent.hide();
                 } else {
-                    openContent.slideUp(120, function() {
-                        targetContent.slideDown(120);
-                    });
+                    openContent.hide();
+                    targetContent.css('display', 'table-row');
                 }
             } else {
-                targetContent.slideDown(120);
+                targetContent.css('display', 'table-row');
             }
         });
         

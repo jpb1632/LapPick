@@ -245,7 +245,7 @@
             <h3>새 문의 작성</h3>
             <button type="button" class="close-btn" onclick="closeQnaModal()">×</button>
         </div>
-       <form action="/qna/write" method="post" th:object="${qnaWriteRequest}"> <table class="form-table">
+        <form th:action="@{/qna/write}" method="post" th:object="${qnaWriteRequest}"> <table class="form-table">
         <tr>
             <th>문의 상품</th>
             <td>

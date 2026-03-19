@@ -124,8 +124,10 @@
                    <div style="display: flex; justify-content: center; align-items: center; gap: 4px; padding-left: 20px">
                       <a class="manage-btn" th:href="@{/admin/employees/{num}(num=${emp.empNum})}">상세</a>
                       <a class="manage-btn" th:href="@{/admin/employees/{num}/edit(num=${emp.empNum})}">수정</a>
-                      <a class="manage-btn" th:href="@{/admin/employees/delete/{num}(num=${emp.empNum})}"
-                         onclick="return confirm('정말 삭제하시겠습니까?');">삭제</a>
+                      <button type="button"
+                              class="manage-btn"
+                              th:data-delete-url="@{/admin/employees/delete/{num}(num=${emp.empNum})}"
+                              onclick="submitSingleDelete(event, this.dataset.deleteUrl, '정말 삭제하시겠습니까?');">삭제</button>
                     </div>
                   </td>
                 </tr>
@@ -172,6 +174,28 @@
       if(confirm('선택한 ' + checked.length + '명의 직원을 삭제하시겠습니까?')){
         document.getElementById('bulkDeleteForm').submit();
       }
+    }
+
+    function submitSingleDelete(event, url, message) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+
+      if (!confirm(message)) {
+        return;
+      }
+
+      const form = document.createElement('form');
+      form.method = 'post';
+      form.action = url;
+
+      if (typeof window.appendCsrfHiddenInput === 'function') {
+        window.appendCsrfHiddenInput(form);
+      }
+
+      document.body.appendChild(form);
+      form.submit();
     }
   </script>
 </th:block>
