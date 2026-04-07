@@ -22,7 +22,7 @@ CPU 종류, RAM 용량, SSD 용량, GPU 모델, 화면 해상도, 주사율...
 
 ## 주요 기능
 
-![시스템 아키텍처](docs/images/architecture.png)
+![시스템 아키텍처](docs/images/lappick_architecture.png)
 *LapPick 시스템 구조 및 주문 프로세스 플로우*
 
 ### 1. 상품 필터 (5가지만)
@@ -61,7 +61,7 @@ MyBatis 동적 쿼리로 사용자가 선택한 필터만 WHERE 조건에 추가
 - 복합 인덱스 (GOODS_NUM, IPGO_QTY)로 재고 집계 조회 최적화 (테스트 기준 Cost 98.7% 감소)
 
 장점:
-- 재고 변동 이력 완전 추적
+- 재고 변동 이력 추적 가능
 - UPDATE 없어 동시성 충돌 감소
 - 문제 발생 시 원인 추적 가능
 
@@ -105,15 +105,15 @@ FOR UPDATE 비관적 락으로 동시성 제어:
 ### 6. 리뷰 시스템
 
 - 배송완료 상태에서만 작성 가능
-- 1개 주문당 1개 리뷰만 작성 가능
+- 주문한 상품 1건당 1개 리뷰만 작성 가능
 - 별점 1~5점, 이미지 여러 장 업로드
 - 관리자 리뷰 숨김/삭제 기능
 
 **중복 리뷰 방지 (2단계):**
 1. 서버: COUNT 검증으로 사전 차단
-2. DB: UNIQUE 제약 (PURCHASE_NUM, GOODS_NUM)으로 Race Condition 차단
+2. DB: UNIQUE 제약 (PURCHASE_NUM, GOODS_NUM)으로 Race Condition으로 인한 중복 저장 최종 방어
 
-배송완료 + 본인 구매 + 중복 방지 로직은 서버와 DB 양쪽에서 보장.
+배송완료·본인 구매 여부는 서버에서 검증하고, 중복 방지는 서버와 DB 양쪽에서 보장합니다.
 
 ---
 
@@ -160,7 +160,7 @@ LapPick/
 │   ├── goods/
 │   │   └── GoodsService.java        # 수불부 재고 관리
 │   ├── auth/
-│   │   └── AuthMapper.xml           # UNION ALL 기반 통합 인증 조회
+│   │   └── AuthMapper.java          # UNION ALL 기반 통합 인증 조회
 │   ├── config/
 │   │   ├── SecurityConfig.java      # Spring Security 설정
 │   │   └── WebConfig.java
@@ -258,13 +258,12 @@ http://localhost:8080
 
 ## 리팩토링 내역
 
-프로젝트를 완성하고 코드를 다시 보니까 개선할 부분이 많이 보였습니다.
+기능 구현 완료 후 운영 가능한 코드 기준으로 전체를 재점검했습니다.
 
 ### 1. 동시성 제어 강화
 
 - `@Transactional` 명시적 설정 (timeout=10, isolation=READ_COMMITTED)
-- FOR UPDATE 도입
-- 예외 처리 세분화 (CannotAcquireLockException / IllegalStateException)
+- 예외 처리 개선: 락 경합(PessimisticLockingFailureException) → CannotAcquireLockException, DB 오류(DataAccessException) → IllegalStateException으로 분리
 
 ### 2. 로깅 시스템 개선
 
@@ -386,29 +385,33 @@ FOR UPDATE 비관적 락을 적용했습니다.
     rollbackFor = Exception.class
 )
 public String placeOrder(...) {
-    // 1. 락 획득
+    // 1. 락 획득 (상품 번호 오름차순 정렬 후 순서대로 획득 → 데드락 방지)
+    acquireLocksInDeterministicOrder(requestedQuantities);
+
+    // 2. 재고 확인 (락 획득 후 안전하게 조회)
+    GoodsStockResponse goodsStock = goodsService.getGoodsDetailWithStock(goodsNum);
+    if (goodsStock.getStockQty() < quantity) {
+        throw new IllegalStateException("재고 부족: ...");
+    }
+
+    // 3. 주문 생성 및 재고 차감
+    purchaseMapper.insertPurchase(...);
+    goodsService.changeStock(goodsNum, -quantity, "주문 출고 (#" + purchaseNum + ")");
+}
+
+// 락 획득 메서드: 예외 타입별로 분리
+private void lockGoods(String goodsNum) {
     try {
         goodsMapper.selectGoodsForUpdate(goodsNum);
-        log.debug("락 획득 성공: {}", goodsNum);
-    } catch (Exception e) {
-        throw new CannotAcquireLockException(
-            "다른 사용자가 주문 중입니다. 잠시 후 다시 시도해주세요.", e
-        );
+    } catch (PessimisticLockingFailureException e) {
+        throw new CannotAcquireLockException("재고 확인이 지연되고 있습니다. 잠시 후 다시 시도해주세요.", e);
+    } catch (DataAccessException e) {
+        throw new IllegalStateException("재고 확인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.", e);
     }
-    
-    // 2. 안전하게 재고 확인 및 차감
-    int stock = goodsMapper.getStock(goodsNum);
-    if (stock < quantity) {
-        throw new IllegalStateException("재고 부족");
-    }
-    
-    // 3. 주문 생성 및 재고 차감
-    purchaseMapper.insert(...);
-    goodsService.changeStock(goodsNum, -quantity, "주문");
 }
 ```
 
-`changeStock()` 메서드도 `Propagation.REQUIRED`로 설정되어 있어,  
+`changeStock()`도 `Propagation.REQUIRED`로 설정되어 있어,  
 `placeOrder()`의 트랜잭션에 참여합니다.
 
 ```java
@@ -452,7 +455,7 @@ FOR UPDATE WAIT 5
 **검증 시나리오:**
 1. User A가 주문 시작 (Breakpoint로 멈춤)
 2. User B가 같은 상품 주문 시도
-3. User B 브라우저가 무한 로딩 → Lock 대기 중 ✅
+3. User B 브라우저가 응답 대기 상태 (최대 5초, Lock 대기 중) ✅
 4. User A Resume → 주문 완료
 5. User B 진행 → 재고 부족으로 실패 ✅
 
@@ -549,14 +552,20 @@ Predicate: access("GOODS_NUM"='goods_000001')
 근데 이렇게 하면 락 타임아웃인지, 재고 부족인지, 시스템 에러인지  
 사용자에게 구체적으로 알려줄 수가 없었습니다.
 
-그래서 예외를 세분화했습니다.
+그래서 예외 타입을 기준으로 분리했습니다.
 
 ```java
 try {
     goodsMapper.selectGoodsForUpdate(goodsNum);
-} catch (Exception e) {
+} catch (PessimisticLockingFailureException e) {
+    // 락 경합 계열만 → 락 실패 메시지
     throw new CannotAcquireLockException(
-        "다른 사용자가 주문 중입니다. 잠시 후 다시 시도해주세요.", e
+        "현재 많은 주문이 몰려 재고 확인이 지연되고 있습니다. 잠시 후 다시 시도해주세요.", e
+    );
+} catch (DataAccessException e) {
+    // 나머지 DB 오류 → 별도 메시지로 분리
+    throw new IllegalStateException(
+        "재고 확인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.", e
     );
 }
 
@@ -568,7 +577,8 @@ if (stock < quantity) {
 }
 ```
 
-이렇게 하니 사용자는 구체적인 오류 메시지를 보고,  
+이렇게 하니 락 경합과 DB 오류를 구분해서 처리할 수 있고,  
+사용자는 상황에 맞는 오류 메시지를 보고,  
 개발자는 로그로 원인을 빠르게 파악할 수 있게 됐습니다.
 
 ---
@@ -600,8 +610,10 @@ EXPLAIN PLAN으로 쿼리 성능을 직접 확인하고 튜닝할 수 있어서 
 | 낙관적 락 | 빠름 | 재시도 필요 | X |
 | 비관적 락 | 느림 | 보장됨 | O |
 
-낙관적 락은 충돌 발생 시 롤백하고 재시도해야 하는데,  
-동시 주문이 많으면 재시도가 폭증할 것 같았습니다.
+낙관적 락은 충돌 시 재시도 로직을 직접 구현해야 하고,
+재시도 중 재고 상태가 또 바뀌는 경우 등 예외 케이스가 늘어납니다.
+금전과 직결된 재고에서 "실패 후 재시도"보다
+"처음부터 순서를 보장"하는 방식이 운영 안전성이 높다고 판단했습니다.
 
 비관적 락은 대기 시간이 발생하지만 (88ms → 380ms),  
 재고 정합성을 확실하게 보장할 수 있어서 선택했습니다.
@@ -638,13 +650,14 @@ WHERE EMP_ID = #{userId}
 
 ---
 
-### LEFT JOIN으로 N+1 해결
+### LEFT JOIN으로 N+1 사전 방지
 
 상황:  
-상품 목록을 조회할 때 상품마다 재고, 리뷰, 판매량을 개별 조회하면 N+1 문제가 발생합니다.
-- 상품 100개 → 쿼리 301회 (1 + 100 + 100 + 100)
+상품 목록에서 상품마다 재고, 리뷰, 판매량을 개별 조회하는 방식이라면 N+1이 발생할 수 있어서,
+처음부터 LEFT JOIN과 집계 서브쿼리로 한 번에 조회하도록 설계했습니다.
+- 개별 조회 시 예상: 상품 100개 → 쿼리 301회 (1 + 100 + 100 + 100)
 
-해결:  
+설계 결과:  
 LEFT JOIN과 서브쿼리로 모든 정보를 한 번에 조회합니다.
 
 ```sql
@@ -701,7 +714,7 @@ SELECT SUM(IPGO_QTY) FROM GOODS_IPGO WHERE GOODS_NUM = ?
 이 쿼리는 인덱스만으로 처리가 가능해서 테이블 접근이 필요 없습니다.  
 (GOODS_NUM으로 찾고, IPGO_QTY는 이미 인덱스에 포함되어 있기 때문)
 
-EXPLAIN PLAN 기준 Cost가 1,654 → 22로 감소했고, 100회 실행 총합은 16,700ms → 30ms였습니다.  
+동일 구조 테스트 테이블(TEST_GOODS_IPGO) 기준 EXPLAIN PLAN Cost가 1,654 → 22로 감소했고, 100회 실행 총합은 16,700ms → 30ms였습니다.  
 회당 평균으로 환산하면 167ms → 0.3ms 수준이었고, Predicate도 filter() → access()로 바뀌어  
 인덱스 탐색 방식이 더 효율적으로 개선됐습니다.
 
@@ -710,7 +723,7 @@ WHERE 절만 보는 게 아니라 SELECT, ORDER BY까지 고려해야 한다는 
 
 ---
 
-### 3. 테스트 코드가 없으면 리팩토링이 아니라 도박이다
+### 3. 테스트 코드가 있으면 리팩토링이 수월하다
 
 리팩토링하면서 가장 크게 느낀 점입니다.
 
@@ -720,7 +733,7 @@ WHERE 절만 보는 게 아니라 SELECT, ORDER BY까지 고려해야 한다는 
 
 핵심 흐름에 대한 테스트를 먼저 보강하고 나서 수정했더니 달랐습니다.
 ArgumentCaptor로 실제 DB에 넘어가는 값을 검증하고,  
-`verify(memberMapper, never()).deleteMemberById(any())`처럼  
+`verify(memberMapper, never()).softWithdrawMember(any(), any())`처럼  
 "이건 절대 호출되면 안 된다"를 코드로 명시할 수 있었습니다.
 
 테스트가 없을 때는 "아마 괜찮겠지"로 배포했다면,  
@@ -745,7 +758,6 @@ ArgumentCaptor로 실제 DB에 넘어가는 값을 검증하고,
 | 항목 | 현재 상태 | 개선 방향 |
 |------|-----------|-----------|
 | 주민번호 저장 | 마스킹 저장 (원본 복원 불가) | 미수집 or AES 양방향 암호화 |
-| 페이지네이션 로직 | 서비스마다 중복 구현 | PageData\<T\> 제네릭으로 통일 |
 | 동시성 통합 테스트 | JMeter 수동 검증 | @SpringBootTest + ExecutorService 자동화 |
 | IPGO_NUM 타입 | VARCHAR2(50) — 문자 정렬 오류 가능 | NUMBER로 변경 |
 
@@ -762,10 +774,10 @@ ArgumentCaptor로 실제 DB에 넘어가는 값을 검증하고,
 | CHECK 제약 | 미흡 | 회원 상태, 주문 상태, 수량/금액, 리뷰 상태/평점 등 보강 |
 | 채번 방식 | MAX(col)+1 | 핵심 채번 경로를 Oracle Sequence 기반으로 전환 |
 | 주민번호·카드번호 | 원문 노출 | 마스킹 저장·표시 적용 (원본 복원 불가 — 개선 여지 있음) |
-| 복합 인덱스 Cost | 1,654 | 22 (98.7% 감소) |
+| 복합 인덱스 Cost | 1,654 | 22 (98.7% 감소, 동일 구조 테스트 기준) |
 | 비관적 락 | 없음 | SELECT FOR UPDATE WAIT 5 |
 | Logger | System.out | SLF4J Logger |
-| 예외 세분화 | Exception 단일 처리 | CannotAcquireLockException / IllegalStateException |
+| 예외 세분화 | Exception 단일 처리 | 락 경합 → CannotAcquireLockException, DB 오류 → IllegalStateException |
 | 회원 탈퇴 | 물리 DELETE | 소프트 딜리트 |
 
 ---
