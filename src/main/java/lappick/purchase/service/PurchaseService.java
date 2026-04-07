@@ -5,6 +5,8 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.CannotAcquireLockException;
+import org.springframework.dao.DataAccessException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
@@ -352,12 +354,12 @@ public class PurchaseService {
             requestedQuantities.merge(goodsNum, quantity, this::addQuantitySafely);
         }
 
+        acquireLocksInDeterministicOrder(requestedQuantities);
+
         List<ValidatedPurchaseItem> items = new ArrayList<>();
         for (Map.Entry<String, Integer> entry : requestedQuantities.entrySet()) {
             String goodsNum = entry.getKey();
             int quantity = entry.getValue();
-
-            lockGoods(goodsNum);
 
             GoodsStockResponse goodsStock = goodsService.getGoodsDetailWithStock(goodsNum);
             if (goodsStock == null) {
@@ -391,6 +393,15 @@ public class PurchaseService {
         return items;
     }
 
+    private void acquireLocksInDeterministicOrder(Map<String, Integer> requestedQuantities) {
+        List<String> lockOrder = new ArrayList<>(requestedQuantities.keySet());
+        lockOrder.sort(String::compareTo);
+
+        for (String goodsNum : lockOrder) {
+            lockGoods(goodsNum);
+        }
+    }
+
     private int calculateTotal(List<ValidatedPurchaseItem> validatedItems) {
         int total = 0;
         try {
@@ -415,10 +426,16 @@ public class PurchaseService {
         try {
             goodsMapper.selectGoodsForUpdate(goodsNum);
             log.debug("락 획득 성공: 상품번호={}", goodsNum);
-        } catch (Exception e) {
-            log.error("락 획득 실패: 상품번호={}", goodsNum, e);
+        } catch (PessimisticLockingFailureException e) {
+            log.warn("락 획득 실패: 상품번호={}", goodsNum, e);
             throw new CannotAcquireLockException(
                     "현재 많은 주문이 몰려 재고 확인이 지연되고 있습니다. 잠시 후 다시 시도해주세요.",
+                    e
+            );
+        } catch (DataAccessException e) {
+            log.error("재고 확인 중 DB 오류: 상품번호={}", goodsNum, e);
+            throw new IllegalStateException(
+                    "재고 확인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
                     e
             );
         }

@@ -18,9 +18,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.CannotAcquireLockException;
+import org.springframework.dao.DataAccessResourceFailureException;
 
 import lappick.cart.mapper.CartMapper;
 import lappick.goods.dto.GoodsStockResponse;
@@ -107,10 +109,10 @@ class PurchaseServiceTest {
     }
 
     @Test
-    void placeOrder_acquiresLockForEachUniqueGoods() {
+    void placeOrder_acquiresLocksInSortedOrderForUniqueGoods() {
         PurchaseRequest request = buildCardOrderRequest();
-        request.setGoodsNums(new String[]{"GOODS-1", "GOODS-2"});
-        request.setGoodsQtys(new String[]{"1", "2"});
+        request.setGoodsNums(new String[]{"GOODS-2", "GOODS-1"});
+        request.setGoodsQtys(new String[]{"2", "1"});
 
         when(goodsMapper.selectGoodsForUpdate("GOODS-1")).thenReturn("GOODS-1");
         when(goodsMapper.selectGoodsForUpdate("GOODS-2")).thenReturn("GOODS-2");
@@ -121,8 +123,9 @@ class PurchaseServiceTest {
 
         purchaseService.placeOrder(request, "mem_100041");
 
-        verify(goodsMapper).selectGoodsForUpdate("GOODS-1");
-        verify(goodsMapper).selectGoodsForUpdate("GOODS-2");
+        InOrder inOrder = org.mockito.Mockito.inOrder(goodsMapper);
+        inOrder.verify(goodsMapper).selectGoodsForUpdate("GOODS-1");
+        inOrder.verify(goodsMapper).selectGoodsForUpdate("GOODS-2");
         verify(goodsService).changeStock(eq("GOODS-1"), eq(-1), contains("#"));
         verify(goodsService).changeStock(eq("GOODS-2"), eq(-2), contains("#"));
         verify(purchaseMapper, times(2)).insertPurchaseItem(any(PurchaseItemResponse.class));
@@ -135,10 +138,27 @@ class PurchaseServiceTest {
         request.setGoodsQtys(new String[]{"1"});
 
         when(goodsMapper.selectGoodsForUpdate("GOODS-1"))
-                .thenThrow(new RuntimeException("lock timeout"));
+                .thenThrow(new CannotAcquireLockException("lock timeout"));
 
         assertThatThrownBy(() -> purchaseService.placeOrder(request, "mem_100041"))
                 .isInstanceOf(CannotAcquireLockException.class);
+
+        verify(goodsService, never()).getGoodsDetailWithStock(anyString());
+        verify(purchaseMapper, never()).insertPurchase(any());
+    }
+
+    @Test
+    void placeOrder_throwsGenericMessageWhenStockLookupFailsForOtherDbReason() {
+        PurchaseRequest request = buildCardOrderRequest();
+        request.setGoodsNums(new String[]{"GOODS-1"});
+        request.setGoodsQtys(new String[]{"1"});
+
+        when(goodsMapper.selectGoodsForUpdate("GOODS-1"))
+                .thenThrow(new DataAccessResourceFailureException("db connection lost"));
+
+        assertThatThrownBy(() -> purchaseService.placeOrder(request, "mem_100041"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("재고 확인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
 
         verify(goodsService, never()).getGoodsDetailWithStock(anyString());
         verify(purchaseMapper, never()).insertPurchase(any());
